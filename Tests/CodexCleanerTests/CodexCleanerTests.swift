@@ -57,6 +57,10 @@ final class CodexCleanerTests: XCTestCase {
 
     let largeLog = root.appendingPathComponent("logs_2.sqlite")
     try write(String(repeating: "x", count: 2_048), to: largeLog)
+    let smallLogWal = root.appendingPathComponent("logs_2.sqlite-wal")
+    try write("wal", to: smallLogWal)
+    let smallLogShm = root.appendingPathComponent("logs_2.sqlite-shm")
+    try write("shm", to: smallLogShm)
 
     let cleaner = CodexCleaner(
       codexHome: root,
@@ -78,7 +82,7 @@ final class CodexCleanerTests: XCTestCase {
 
     XCTAssertEqual(result.archivedSessions, 1)
     XCTAssertEqual(result.archivedWorktrees, 1)
-    XCTAssertEqual(result.rotatedLogs, 1)
+    XCTAssertEqual(result.rotatedLogs, 3)
     XCTAssertEqual(result.prunedProjects, 1)
     XCTAssertGreaterThan(result.bytesMoved, 0)
     XCTAssertNotNil(result.backupDirectory)
@@ -91,6 +95,8 @@ final class CodexCleanerTests: XCTestCase {
       )
     )
     XCTAssertFalse(FileManager.default.fileExists(atPath: largeLog.path))
+    XCTAssertFalse(FileManager.default.fileExists(atPath: smallLogWal.path))
+    XCTAssertFalse(FileManager.default.fileExists(atPath: smallLogShm.path))
 
     let archivedWorktrees = try contents(
       of: root.appendingPathComponent("archived_worktrees")
@@ -109,6 +115,12 @@ final class CodexCleanerTests: XCTestCase {
         FileManager.default.fileExists(
           atPath: $0.appendingPathComponent("logs_2.sqlite").path
         )
+          && FileManager.default.fileExists(
+            atPath: $0.appendingPathComponent("logs_2.sqlite-wal").path
+          )
+          && FileManager.default.fileExists(
+            atPath: $0.appendingPathComponent("logs_2.sqlite-shm").path
+          )
       }
     )
 
@@ -147,6 +159,26 @@ final class CodexCleanerTests: XCTestCase {
         atPath: root.appendingPathComponent("maintenance_backups").path
       )
     )
+  }
+
+  func testRepeatedCleanupCreatesDistinctBackups() throws {
+    let root = try makeTemporaryCodexHome()
+    try write("model = \"gpt-5.5\"", to: root.appendingPathComponent("config.toml"))
+
+    let cleaner = CodexCleaner(
+      codexHome: root,
+      codexRunningProvider: { false }
+    )
+
+    let first = try cleaner.clean()
+    let second = try cleaner.clean()
+
+    XCTAssertNotEqual(first.backupDirectory, second.backupDirectory)
+
+    let firstBackup = try XCTUnwrap(first.backupDirectory)
+    let secondBackup = try XCTUnwrap(second.backupDirectory)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: firstBackup.path))
+    XCTAssertTrue(FileManager.default.fileExists(atPath: secondBackup.path))
   }
 
   private func makeTemporaryCodexHome() throws -> URL {

@@ -118,14 +118,12 @@ final class CodexCleaner {
     let logArchive = codexHome
       .appendingPathComponent("archived_logs")
       .appendingPathComponent(timestamp())
-    for file in files(
-      under: codexHome,
-      recursive: false,
-      matching: { $0.lastPathComponent.hasPrefix("logs_") }
-    ) where fileSize(file) >= largeLogBytes {
-      result.bytesMoved += fileSize(file)
-      try move(file, toDirectory: logArchive)
-      result.rotatedLogs += 1
+    for family in logFamiliesToRotate() {
+      for file in family {
+        result.bytesMoved += fileSize(file)
+        try move(file, toDirectory: logArchive)
+        result.rotatedLogs += 1
+      }
     }
 
     result.prunedProjects = try pruneMissingConfigProjects()
@@ -179,8 +177,9 @@ final class CodexCleaner {
     let backupRoot = codexHome
       .appendingPathComponent("maintenance_backups")
       .appendingPathComponent(timestamp())
+    let uniqueBackupRoot = uniqueDirectory(for: backupRoot)
     try fileManager.createDirectory(
-      at: backupRoot,
+      at: uniqueBackupRoot,
       withIntermediateDirectories: true
     )
 
@@ -200,7 +199,7 @@ final class CodexCleaner {
       if fileManager.fileExists(atPath: source.path) {
         try fileManager.copyItem(
           at: source,
-          to: backupRoot.appendingPathComponent(name)
+          to: uniqueBackupRoot.appendingPathComponent(name)
         )
       }
     }
@@ -210,12 +209,12 @@ final class CodexCleaner {
       if fileManager.fileExists(atPath: source.path) {
         try fileManager.copyItem(
           at: source,
-          to: backupRoot.appendingPathComponent(name)
+          to: uniqueBackupRoot.appendingPathComponent(name)
         )
       }
     }
 
-    return backupRoot
+    return uniqueBackupRoot
   }
 
   private func pruneMissingConfigProjects() throws -> Int {
@@ -362,6 +361,34 @@ final class CodexCleaner {
     try fileManager.moveItem(at: source, to: destination)
   }
 
+  private func logFamiliesToRotate() -> [[URL]] {
+    let logFiles = files(
+      under: codexHome,
+      recursive: false,
+      matching: { $0.lastPathComponent.hasPrefix("logs_") }
+    )
+    let families = Dictionary(grouping: logFiles, by: logFamilyKey)
+
+    return families.values
+      .filter { family in
+        family.contains { fileSize($0) >= largeLogBytes }
+      }
+      .map { family in
+        family.sorted { $0.lastPathComponent < $1.lastPathComponent }
+      }
+      .sorted { left, right in
+        (left.first?.lastPathComponent ?? "") < (right.first?.lastPathComponent ?? "")
+      }
+  }
+
+  private func logFamilyKey(for file: URL) -> String {
+    let name = file.lastPathComponent
+    if name.hasSuffix("-wal") || name.hasSuffix("-shm") {
+      return String(name.dropLast(4))
+    }
+    return name
+  }
+
   private func uniqueDestination(for source: URL, in directory: URL) -> URL {
     let initial = directory.appendingPathComponent(source.lastPathComponent)
     guard fileManager.fileExists(atPath: initial.path) else {
@@ -371,7 +398,38 @@ final class CodexCleaner {
     let baseName = source.deletingPathExtension().lastPathComponent
     let pathExtension = source.pathExtension
     let suffix = pathExtension.isEmpty ? "" : ".\(pathExtension)"
-    return directory.appendingPathComponent("\(baseName)-\(timestamp())\(suffix)")
+    let stamped = directory.appendingPathComponent(
+      "\(baseName)-\(timestamp())\(suffix)"
+    )
+    guard fileManager.fileExists(atPath: stamped.path) else {
+      return stamped
+    }
+
+    var attempt = 2
+    while true {
+      let candidate = directory.appendingPathComponent(
+        "\(baseName)-\(timestamp())-\(attempt)\(suffix)"
+      )
+      if !fileManager.fileExists(atPath: candidate.path) {
+        return candidate
+      }
+      attempt += 1
+    }
+  }
+
+  private func uniqueDirectory(for directory: URL) -> URL {
+    guard fileManager.fileExists(atPath: directory.path) else {
+      return directory
+    }
+
+    var attempt = 2
+    while true {
+      let candidate = URL(fileURLWithPath: "\(directory.path)-\(attempt)")
+      if !fileManager.fileExists(atPath: candidate.path) {
+        return candidate
+      }
+      attempt += 1
+    }
   }
 
   private static func detectCodexRunning() -> Bool {
