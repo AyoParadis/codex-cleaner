@@ -51,7 +51,7 @@ are not touched from two places at once.
 Clone the repo, build the app bundle, then copy it into `/Applications`:
 
 ```sh
-git clone https://github.com/AyoCodess/codex-cleaner.git
+git clone https://github.com/AyoParadis/codex-cleaner.git
 cd codex-cleaner
 ./Scripts/build-app.sh
 ditto ".build/app/Codex Cleaner.app" "/Applications/Codex Cleaner.app"
