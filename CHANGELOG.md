@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.5 - 2026-05-04
+
+- Stabilized layout during scan and cleanup state changes.
+- Reserved toolbar progress space so the toolbar height no longer jumps.
+- Replaced conditional action panels with one fixed-height action status panel.
+- Added fixed-width toolbar buttons so labels do not resize the action area.
+- Kept error, locked, ready, and progress states in the same visual location.
+
 ## v1.0.4 - 2026-05-04
 
 - Made disabled cleanup controls visually disabled.

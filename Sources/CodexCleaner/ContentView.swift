@@ -62,31 +62,15 @@ struct ContentView: View {
   private func mainContent(_ report: CleanerReport) -> some View {
     ScrollView {
       VStack(alignment: .leading, spacing: AppSpacing.large) {
-        if report.metrics.codexIsRunning {
-          CleanupBlockedView(message: cleanupDisabledReason ?? "Cleanup is locked.")
-        }
-
-        if case .failed(let errorMessage) = scanState {
-          ErrorStateView(
-            title: "Scan Failed",
-            message: errorMessage,
-            actionTitle: "Try Again",
-            action: { Task { await scan() } }
-          )
-        }
-
-        if scanState == .scanning {
-          ProgressPanel(progress: scanProgress)
-        }
-
-        if let cleanupError {
-          ErrorStateView(
-            title: "Cleanup Did Not Run",
-            message: cleanupError,
-            actionTitle: "Scan Again",
-            action: { Task { await scan() } }
-          )
-        }
+        ActionStatusPanel(
+          title: actionStatusTitle,
+          message: actionStatusMessage,
+          icon: actionStatusIcon,
+          tint: actionStatusTint,
+          progress: actionStatusProgress,
+          actionTitle: actionStatusActionTitle,
+          action: actionStatusAction
+        )
 
         MetricsStrip(metrics: report.metrics)
 
@@ -187,5 +171,88 @@ struct ContentView: View {
 
   private func pauseForVisibleProgress() async throws {
     try await Task.sleep(for: .milliseconds(180))
+  }
+
+  private var actionStatusTitle: String {
+    if scanState == .scanning {
+      return scanProgress.title
+    }
+    if cleanupError != nil {
+      return "Cleanup Did Not Run"
+    }
+    if case .failed = scanState {
+      return "Scan Failed"
+    }
+    if report.metrics.codexIsRunning {
+      return "Cleanup Locked"
+    }
+    return "Ready"
+  }
+
+  private var actionStatusMessage: String {
+    if scanState == .scanning {
+      return scanProgress.detail
+    }
+    if let cleanupError {
+      return cleanupError
+    }
+    if case .failed(let errorMessage) = scanState {
+      return errorMessage
+    }
+    if let cleanupDisabledReason {
+      return "\(cleanupDisabledReason) Quit Codex, then run cleanup."
+    }
+    return "Scan is complete. Cleanup can run when Codex is closed."
+  }
+
+  private var actionStatusIcon: String {
+    if scanState == .scanning {
+      return "arrow.triangle.2.circlepath"
+    }
+    if cleanupError != nil {
+      return "exclamationmark.triangle.fill"
+    }
+    if case .failed = scanState {
+      return "exclamationmark.triangle.fill"
+    }
+    if report.metrics.codexIsRunning {
+      return "lock.fill"
+    }
+    return "checkmark.seal.fill"
+  }
+
+  private var actionStatusTint: Color {
+    if scanState == .scanning {
+      return .blue
+    }
+    if cleanupError != nil {
+      return .red
+    }
+    if case .failed = scanState {
+      return .red
+    }
+    if report.metrics.codexIsRunning {
+      return .orange
+    }
+    return .green
+  }
+
+  private var actionStatusProgress: Double? {
+    scanState == .scanning ? scanProgress.fraction : nil
+  }
+
+  private var actionStatusActionTitle: String? {
+    if cleanupError != nil {
+      return "Scan Again"
+    }
+    if case .failed = scanState {
+      return "Try Again"
+    }
+    return nil
+  }
+
+  private var actionStatusAction: (() -> Void)? {
+    guard actionStatusActionTitle != nil else { return nil }
+    return { Task { await scan() } }
   }
 }

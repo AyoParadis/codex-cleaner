@@ -48,6 +48,7 @@ struct PrimaryButtonStyle: ButtonStyle {
       .background(background(configuration))
       .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
       .opacity(isEnabled ? 1 : 0.72)
+      .contentShape(Rectangle())
   }
 
   private func background(_ configuration: Configuration) -> Color {
@@ -74,6 +75,7 @@ struct UtilityButtonStyle: ButtonStyle {
       }
       .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
       .opacity(isEnabled ? 1 : 0.68)
+      .contentShape(Rectangle())
   }
 
   private func background(_ configuration: Configuration) -> Color {

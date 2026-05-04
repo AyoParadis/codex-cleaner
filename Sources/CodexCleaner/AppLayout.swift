@@ -93,35 +93,38 @@ struct AppToolbar: View {
           .foregroundStyle(.secondary)
           .lineLimit(1)
           .truncationMode(.middle)
-        if isScanning {
-          ProgressView(value: progress.fraction)
-            .progressViewStyle(.linear)
-            .frame(width: 260)
-        }
+        ProgressView(value: isScanning ? progress.fraction : 0)
+          .progressViewStyle(.linear)
+          .frame(width: 260, height: 4)
+          .opacity(isScanning ? 1 : 0)
       }
+      .frame(height: 62, alignment: .center)
 
       Spacer()
 
       Button(action: onReveal) {
         Label("Reveal", systemImage: "folder")
+          .frame(width: 92)
       }
       .buttonStyle(UtilityButtonStyle())
 
       Button(action: onScan) {
         Label(isScanning ? "Scanning" : "Scan", systemImage: "arrow.clockwise")
+          .frame(width: 92)
       }
       .buttonStyle(UtilityButtonStyle())
       .disabled(isScanning)
 
       Button(action: onClean) {
         Label(cleanupButtonTitle, systemImage: cleanupButtonIcon)
+          .frame(width: 142)
       }
       .buttonStyle(PrimaryButtonStyle())
       .disabled(cleanupIsDisabled)
       .help(cleanupDisabledReason ?? "Run Codex cleanup")
     }
     .padding(.horizontal, AppSpacing.page)
-    .padding(.vertical, 14)
+    .frame(height: 94)
     .background(.regularMaterial)
   }
 
@@ -184,63 +187,56 @@ struct EmptyScanView: View {
   }
 }
 
-struct ProgressPanel: View {
-  let progress: ScanProgress
-
-  var body: some View {
-    InspectorGroup(progress.title, subtitle: progress.detail) {
-      VStack(alignment: .leading, spacing: AppSpacing.medium) {
-        ProgressView(value: progress.fraction)
-          .progressViewStyle(.linear)
-        HStack {
-          Text("\(Int(progress.fraction * 100))%")
-            .font(.system(size: 11, weight: .semibold, design: .monospaced))
-            .foregroundStyle(.secondary)
-          Spacer()
-          Text("Local scan")
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(.secondary)
-        }
-      }
-      .panelPadding()
-    }
-  }
-}
-
-struct ErrorStateView: View {
+struct ActionStatusPanel: View {
   let title: String
   let message: String
-  let actionTitle: String
-  let action: () -> Void
+  let icon: String
+  let tint: Color
+  let progress: Double?
+  let actionTitle: String?
+  let action: (() -> Void)?
 
   var body: some View {
     HStack(alignment: .top, spacing: AppSpacing.medium) {
-      Image(systemName: "exclamationmark.triangle.fill")
+      Image(systemName: icon)
         .font(.system(size: 18, weight: .semibold))
-        .foregroundStyle(.red)
+        .foregroundStyle(tint)
         .frame(width: 34, height: 34)
-        .background(Color.red.opacity(0.1))
+        .background(tint.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
 
-      VStack(alignment: .leading, spacing: 4) {
+      VStack(alignment: .leading, spacing: 7) {
         Text(title)
           .font(.system(size: 14, weight: .semibold))
         Text(message)
           .font(.system(size: 12, weight: .medium))
           .foregroundStyle(.secondary)
+          .lineLimit(2)
+          .fixedSize(horizontal: false, vertical: true)
+
+        ProgressView(value: progress ?? 0)
+          .progressViewStyle(.linear)
+          .frame(maxWidth: 360)
+          .opacity(progress == nil ? 0 : 1)
       }
 
       Spacer()
 
-      Button(actionTitle, action: action)
-        .buttonStyle(UtilityButtonStyle())
+      if let actionTitle, let action {
+        Button(actionTitle, action: action)
+          .buttonStyle(UtilityButtonStyle())
+          .frame(width: 112)
+      } else {
+        Color.clear
+          .frame(width: 112, height: 1)
+      }
     }
     .padding(AppSpacing.medium)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background(Color.red.opacity(0.06))
+    .frame(maxWidth: .infinity, minHeight: 104, maxHeight: 104, alignment: .leading)
+    .background(tint.opacity(0.06))
     .overlay {
       RoundedRectangle(cornerRadius: 8, style: .continuous)
-        .stroke(Color.red.opacity(0.18))
+        .stroke(tint.opacity(0.18))
     }
     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
   }
