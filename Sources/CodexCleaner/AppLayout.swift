@@ -1,0 +1,163 @@
+import SwiftUI
+
+enum AppSpacing {
+  static let page: CGFloat = 24
+  static let large: CGFloat = 18
+  static let medium: CGFloat = 12
+  static let small: CGFloat = 8
+}
+
+struct AppSidebar: View {
+  let codexHome: URL?
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      brand
+
+      SidebarItem(
+        "Overview",
+        icon: "gauge.with.dots.needle.bottom.50percent",
+        isSelected: true
+      )
+      SidebarItem("Archives", icon: "archivebox")
+      SidebarItem("Logs", icon: "doc.text.magnifyingglass")
+      SidebarItem("Config", icon: "gearshape")
+
+      Spacer()
+
+      codexHomeCard
+    }
+    .frame(width: 236)
+    .background(Color(nsColor: .windowBackgroundColor))
+  }
+
+  private var brand: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Image(systemName: "shippingbox.and.arrow.backward")
+        .font(.system(size: 28, weight: .semibold))
+        .foregroundStyle(.blue)
+        .frame(width: 44, height: 44)
+        .background(Color.blue.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+      VStack(alignment: .leading, spacing: 3) {
+        Text("Codex Cleaner")
+          .font(.system(size: 22, weight: .semibold))
+          .foregroundStyle(.primary)
+        Text("Local Maintenance")
+          .font(.system(size: 12, weight: .medium))
+          .foregroundStyle(.secondary)
+      }
+    }
+    .padding(.horizontal, 20)
+    .padding(.top, 24)
+    .padding(.bottom, 20)
+  }
+
+  private var codexHomeCard: some View {
+    VStack(alignment: .leading, spacing: AppSpacing.small) {
+      Text("Codex Home")
+        .font(.system(size: 11, weight: .semibold))
+        .foregroundStyle(.secondary)
+      Text(codexHome?.path ?? "~/.codex")
+        .font(.system(size: 11, design: .monospaced))
+        .foregroundStyle(.secondary)
+        .lineLimit(2)
+        .truncationMode(.middle)
+    }
+    .padding(14)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Color(nsColor: .controlBackgroundColor))
+    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    .padding(16)
+  }
+}
+
+struct AppToolbar: View {
+  let message: String
+  let isWorking: Bool
+  let cleanupIsDisabled: Bool
+  let onReveal: () -> Void
+  let onScan: () -> Void
+  let onClean: () -> Void
+
+  var body: some View {
+    HStack(spacing: 10) {
+      VStack(alignment: .leading, spacing: 3) {
+        Text("Overview")
+          .font(.system(size: 24, weight: .semibold))
+        Text(message)
+          .font(.system(size: 12, weight: .medium))
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+          .truncationMode(.middle)
+      }
+
+      Spacer()
+
+      Button(action: onReveal) {
+        Label("Reveal", systemImage: "folder")
+      }
+      .buttonStyle(UtilityButtonStyle())
+
+      Button(action: onScan) {
+        Label("Scan", systemImage: "arrow.clockwise")
+      }
+      .buttonStyle(UtilityButtonStyle())
+      .disabled(isWorking)
+
+      Button(action: onClean) {
+        Label("Run Cleanup", systemImage: "play.fill")
+      }
+      .buttonStyle(PrimaryButtonStyle())
+      .disabled(cleanupIsDisabled)
+    }
+    .padding(.horizontal, AppSpacing.page)
+    .padding(.vertical, 14)
+    .background(.regularMaterial)
+  }
+}
+
+struct SidebarItem: View {
+  let title: String
+  let icon: String
+  let isSelected: Bool
+
+  init(_ title: String, icon: String, isSelected: Bool = false) {
+    self.title = title
+    self.icon = icon
+    self.isSelected = isSelected
+  }
+
+  var body: some View {
+    HStack(spacing: 10) {
+      Image(systemName: icon)
+        .font(.system(size: 14, weight: .medium))
+        .frame(width: 20)
+      Text(title)
+        .font(.system(size: 13, weight: .medium))
+      Spacer()
+    }
+    .foregroundStyle(isSelected ? .primary : .secondary)
+    .padding(.horizontal, AppSpacing.medium)
+    .padding(.vertical, AppSpacing.small)
+    .background(isSelected ? Color.blue.opacity(0.12) : .clear)
+    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+    .padding(.horizontal, AppSpacing.medium)
+  }
+}
+
+struct EmptyScanView: View {
+  let message: String
+
+  var body: some View {
+    VStack(spacing: 14) {
+      ProgressView()
+        .controlSize(.large)
+      Text(message)
+        .font(.system(size: 14, weight: .medium))
+        .foregroundStyle(.secondary)
+    }
+    .frame(maxWidth: .infinity, minHeight: 420)
+  }
+}

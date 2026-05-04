@@ -24,13 +24,25 @@ final class CodexCleaner {
     self.codexRunningProvider = codexRunningProvider
   }
 
+  private var activeSessionsDirectory: URL {
+    codexHome.appendingPathComponent("sessions")
+  }
+
+  private var archivedSessionsDirectory: URL {
+    codexHome.appendingPathComponent("archived_sessions")
+  }
+
+  private var worktreesDirectory: URL {
+    codexHome.appendingPathComponent("worktrees")
+  }
+
   func scan() -> CleanerReport {
     let activeSessions = files(
-      under: codexHome.appendingPathComponent("sessions"),
+      under: activeSessionsDirectory,
       matching: { $0.pathExtension == "jsonl" }
     )
     let archivedSessions = files(
-      under: codexHome.appendingPathComponent("archived_sessions"),
+      under: archivedSessionsDirectory,
       matching: { $0.pathExtension == "jsonl" }
     )
     let logFiles = files(
@@ -39,7 +51,7 @@ final class CodexCleaner {
       matching: { $0.lastPathComponent.hasPrefix("logs_") }
     )
     let worktrees = directories(
-      under: codexHome.appendingPathComponent("worktrees")
+      under: worktreesDirectory
     )
     let staleSessions = staleFiles(activeSessions, olderThanDays: staleSessionDays)
     let staleWorktrees = staleDirectories(
@@ -93,13 +105,13 @@ final class CodexCleaner {
 
     for file in staleFiles(
       files(
-        under: codexHome.appendingPathComponent("sessions"),
+        under: activeSessionsDirectory,
         matching: { $0.pathExtension == "jsonl" }
       ),
       olderThanDays: staleSessionDays
     ) {
       result.bytesMoved += fileSize(file)
-      try move(file, toDirectory: codexHome.appendingPathComponent("archived_sessions"))
+      try move(file, toDirectory: archivedSessionsDirectory)
       result.archivedSessions += 1
     }
 
@@ -107,7 +119,7 @@ final class CodexCleaner {
       .appendingPathComponent("archived_worktrees")
       .appendingPathComponent(timestamp())
     for directory in staleDirectories(
-      directories(under: codexHome.appendingPathComponent("worktrees")),
+      directories(under: worktreesDirectory),
       olderThanDays: staleWorktreeDays
     ) {
       result.bytesMoved += directorySize(directory)
@@ -491,22 +503,4 @@ final class CodexCleaner {
     formatter.dateFormat = "yyyyMMdd-HHmmss"
     return formatter.string(from: Date())
   }
-}
-
-enum CleanerError: LocalizedError {
-  case codexIsRunning
-
-  var errorDescription: String? {
-    switch self {
-    case .codexIsRunning:
-      return "Codex is running. Close Codex, then run cleanup again so the local database is not touched from two places."
-    }
-  }
-}
-
-func formatBytes(_ bytes: Int64) -> String {
-  ByteCountFormatter.string(
-    fromByteCount: bytes,
-    countStyle: .file
-  )
 }
