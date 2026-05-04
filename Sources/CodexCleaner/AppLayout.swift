@@ -76,6 +76,7 @@ struct AppSidebar: View {
 struct AppToolbar: View {
   let message: String
   let isScanning: Bool
+  let progress: ScanProgress
   let cleanupIsDisabled: Bool
   let onReveal: () -> Void
   let onScan: () -> Void
@@ -83,7 +84,7 @@ struct AppToolbar: View {
 
   var body: some View {
     HStack(spacing: 10) {
-      VStack(alignment: .leading, spacing: 3) {
+      VStack(alignment: .leading, spacing: 6) {
         Text("Overview")
           .font(.system(size: 24, weight: .semibold))
         Text(message)
@@ -91,6 +92,11 @@ struct AppToolbar: View {
           .foregroundStyle(.secondary)
           .lineLimit(1)
           .truncationMode(.middle)
+        if isScanning {
+          ProgressView(value: progress.fraction)
+            .progressViewStyle(.linear)
+            .frame(width: 260)
+        }
       }
 
       Spacer()
@@ -162,20 +168,64 @@ struct EmptyScanView: View {
   }
 }
 
-struct ErrorBanner: View {
-  let message: String
+struct ProgressPanel: View {
+  let progress: ScanProgress
 
   var body: some View {
-    Label(message, systemImage: "exclamationmark.triangle.fill")
-      .font(.system(size: 13, weight: .medium))
-      .foregroundStyle(.red)
-      .padding(AppSpacing.medium)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .background(Color.red.opacity(0.08))
-      .overlay {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-          .stroke(Color.red.opacity(0.2))
+    InspectorGroup(progress.title, subtitle: progress.detail) {
+      VStack(alignment: .leading, spacing: AppSpacing.medium) {
+        ProgressView(value: progress.fraction)
+          .progressViewStyle(.linear)
+        HStack {
+          Text("\(Int(progress.fraction * 100))%")
+            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+            .foregroundStyle(.secondary)
+          Spacer()
+          Text("Local scan")
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.secondary)
+        }
       }
-      .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+      .panelPadding()
+    }
+  }
+}
+
+struct ErrorStateView: View {
+  let title: String
+  let message: String
+  let actionTitle: String
+  let action: () -> Void
+
+  var body: some View {
+    HStack(alignment: .top, spacing: AppSpacing.medium) {
+      Image(systemName: "exclamationmark.triangle.fill")
+        .font(.system(size: 18, weight: .semibold))
+        .foregroundStyle(.red)
+        .frame(width: 34, height: 34)
+        .background(Color.red.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+      VStack(alignment: .leading, spacing: 4) {
+        Text(title)
+          .font(.system(size: 14, weight: .semibold))
+        Text(message)
+          .font(.system(size: 12, weight: .medium))
+          .foregroundStyle(.secondary)
+      }
+
+      Spacer()
+
+      Button(actionTitle, action: action)
+        .buttonStyle(UtilityButtonStyle())
+    }
+    .padding(AppSpacing.medium)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Color.red.opacity(0.06))
+    .overlay {
+      RoundedRectangle(cornerRadius: 8, style: .continuous)
+        .stroke(Color.red.opacity(0.18))
+    }
+    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
   }
 }

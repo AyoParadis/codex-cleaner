@@ -45,6 +45,18 @@ enum ScanState: Equatable {
   case failed(String)
 }
 
+struct ScanProgress: Equatable {
+  var title: String
+  var detail: String
+  var fraction: Double
+
+  static let idle = ScanProgress(
+    title: "Ready",
+    detail: "Run a scan to inspect local Codex state.",
+    fraction: 0
+  )
+}
+
 struct FileRecord: Identifiable, Equatable {
   var id: String { url.path }
   var url: URL

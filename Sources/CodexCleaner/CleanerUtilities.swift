@@ -38,9 +38,9 @@ extension CleanerReport {
       largestFiles: [],
       plan: [
         CleanupPlanItem(
-          title: "Scanning Codex state",
-          detail: "The app is checking sessions, worktrees, logs, and config entries.",
-          impact: "Working"
+          title: "No scan results yet",
+          detail: "The app will check sessions, worktrees, logs, and config entries.",
+          impact: "Pending"
         ),
       ]
     )

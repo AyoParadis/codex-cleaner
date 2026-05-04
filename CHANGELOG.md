@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.3 - 2026-05-04
+
+- Added visible scan progress in the toolbar and main dashboard.
+- Added scan phase labels and percentages so loading state is understandable.
+- Added a retryable error state for scan failures.
+- Kept cleanup disabled while scan progress is active.
+
 ## v1.0.2 - 2026-05-04
 
 - Fixed a launch-time scan hang caused by process detection waiting on `ps`

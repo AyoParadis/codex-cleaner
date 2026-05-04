@@ -4,6 +4,7 @@ struct ContentView: View {
   @State private var report = CleanerReport.placeholder
   @State private var result: CleanupResult?
   @State private var scanState = ScanState.idle
+  @State private var scanProgress = ScanProgress.idle
   @State private var isCleaning = false
   @State private var message = "Ready to scan ~/.codex."
 
@@ -19,6 +20,7 @@ struct ContentView: View {
         AppToolbar(
           message: message,
           isScanning: scanState == .scanning,
+          progress: scanProgress,
           cleanupIsDisabled: cleanupIsDisabled,
           onReveal: cleaner.revealCodexHome,
           onScan: { Task { await scan() } },
@@ -46,7 +48,16 @@ struct ContentView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: AppSpacing.large) {
         if case .failed(let errorMessage) = scanState {
-          ErrorBanner(message: errorMessage)
+          ErrorStateView(
+            title: "Scan Failed",
+            message: errorMessage,
+            actionTitle: "Try Again",
+            action: { Task { await scan() } }
+          )
+        }
+
+        if scanState == .scanning {
+          ProgressPanel(progress: scanProgress)
         }
 
         MetricsStrip(metrics: report.metrics)
@@ -70,21 +81,52 @@ struct ContentView: View {
   }
 
   private func scan() async {
+    guard scanState != .scanning else { return }
+
     scanState = .scanning
+    scanProgress = ScanProgress(
+      title: "Preparing scan",
+      detail: "Checking that the Codex home folder exists.",
+      fraction: 0.12
+    )
     message = "Scanning ~/.codex..."
 
     do {
+      try await pauseForVisibleProgress()
+      scanProgress = ScanProgress(
+        title: "Reading local state",
+        detail: "Counting sessions, archived chats, logs, and worktrees.",
+        fraction: 0.38
+      )
+
       let newReport = try await Task.detached {
         try CodexCleaner().scan()
       }.value
 
+      scanProgress = ScanProgress(
+        title: "Preparing report",
+        detail: "Building cleanup plan and readiness checks.",
+        fraction: 0.82
+      )
+      try await pauseForVisibleProgress()
+
       report = newReport
       scanState = .idle
+      scanProgress = ScanProgress(
+        title: "Scan complete",
+        detail: "Cleanup report is ready.",
+        fraction: 1
+      )
       message = newReport.metrics.codexIsRunning
         ? "Codex is open, so cleanup is locked. Close Codex and relaunch this app to run it."
         : "Scan complete. One-button cleanup is ready."
     } catch {
       scanState = .failed(error.localizedDescription)
+      scanProgress = ScanProgress(
+        title: "Scan failed",
+        detail: error.localizedDescription,
+        fraction: 1
+      )
       message = "Scan failed."
     }
   }
@@ -103,5 +145,9 @@ struct ContentView: View {
     } catch {
       message = error.localizedDescription
     }
+  }
+
+  private func pauseForVisibleProgress() async throws {
+    try await Task.sleep(for: .milliseconds(180))
   }
 }
