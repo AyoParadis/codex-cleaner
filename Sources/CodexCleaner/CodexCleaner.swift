@@ -4,14 +4,24 @@ import Foundation
 final class CodexCleaner {
   private let fileManager = FileManager.default
   private let codexHome: URL
-  private let staleSessionDays = 10
-  private let staleWorktreeDays = 14
-  private let largeLogBytes: Int64 = 100 * 1_024 * 1_024
+  private let staleSessionDays: Int
+  private let staleWorktreeDays: Int
+  private let largeLogBytes: Int64
+  private let codexRunningProvider: () -> Bool
 
-  init(codexHome: URL = FileManager.default.homeDirectoryForCurrentUser
-    .appendingPathComponent(".codex"))
-  {
+  init(
+    codexHome: URL = FileManager.default.homeDirectoryForCurrentUser
+      .appendingPathComponent(".codex"),
+    staleSessionDays: Int = 10,
+    staleWorktreeDays: Int = 14,
+    largeLogBytes: Int64 = 100 * 1_024 * 1_024,
+    codexRunningProvider: @escaping () -> Bool = CodexCleaner.detectCodexRunning
+  ) {
     self.codexHome = codexHome
+    self.staleSessionDays = staleSessionDays
+    self.staleWorktreeDays = staleWorktreeDays
+    self.largeLogBytes = largeLogBytes
+    self.codexRunningProvider = codexRunningProvider
   }
 
   func scan() -> CleanerReport {
@@ -53,7 +63,7 @@ final class CodexCleaner {
       staleWorktreeCount: staleWorktrees.count,
       largeLogCount: logFiles.filter { fileSize($0) >= largeLogBytes }.count,
       missingProjectCount: missingProjects.count,
-      codexIsRunning: isCodexRunning()
+      codexIsRunning: codexRunningProvider()
     )
 
     return CleanerReport(
@@ -345,16 +355,26 @@ final class CodexCleaner {
       at: directory,
       withIntermediateDirectories: true
     )
-    var destination = directory.appendingPathComponent(source.lastPathComponent)
-    if fileManager.fileExists(atPath: destination.path) {
-      destination = directory.appendingPathComponent(
-        "\(source.deletingPathExtension().lastPathComponent)-\(timestamp()).\(source.pathExtension)"
-      )
-    }
+    let destination = uniqueDestination(
+      for: source,
+      in: directory
+    )
     try fileManager.moveItem(at: source, to: destination)
   }
 
-  private func isCodexRunning() -> Bool {
+  private func uniqueDestination(for source: URL, in directory: URL) -> URL {
+    let initial = directory.appendingPathComponent(source.lastPathComponent)
+    guard fileManager.fileExists(atPath: initial.path) else {
+      return initial
+    }
+
+    let baseName = source.deletingPathExtension().lastPathComponent
+    let pathExtension = source.pathExtension
+    let suffix = pathExtension.isEmpty ? "" : ".\(pathExtension)"
+    return directory.appendingPathComponent("\(baseName)-\(timestamp())\(suffix)")
+  }
+
+  private static func detectCodexRunning() -> Bool {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/bin/ps")
     process.arguments = ["-axo", "comm,args"]

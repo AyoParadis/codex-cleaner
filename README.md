@@ -30,6 +30,13 @@ Open it from Finder or with:
 open ".build/app/Codex Cleaner.app"
 ```
 
+## Verify
+
+```sh
+swift test
+./Scripts/build-app.sh
+```
+
 ## Safety
 
 Cleanup moves files into archive folders under `~/.codex`; it does not delete

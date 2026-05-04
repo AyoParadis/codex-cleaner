@@ -12,6 +12,11 @@ let package = Package(
     .executableTarget(
       name: "CodexCleaner",
       path: "Sources/CodexCleaner"
-    )
+    ),
+    .testTarget(
+      name: "CodexCleanerTests",
+      dependencies: ["CodexCleaner"],
+      path: "Tests/CodexCleanerTests"
+    ),
   ]
 )
