@@ -75,7 +75,7 @@ struct AppSidebar: View {
 
 struct AppToolbar: View {
   let message: String
-  let isWorking: Bool
+  let isScanning: Bool
   let cleanupIsDisabled: Bool
   let onReveal: () -> Void
   let onScan: () -> Void
@@ -101,10 +101,10 @@ struct AppToolbar: View {
       .buttonStyle(UtilityButtonStyle())
 
       Button(action: onScan) {
-        Label("Scan", systemImage: "arrow.clockwise")
+        Label(isScanning ? "Scanning" : "Scan", systemImage: "arrow.clockwise")
       }
       .buttonStyle(UtilityButtonStyle())
-      .disabled(isWorking)
+      .disabled(isScanning)
 
       Button(action: onClean) {
         Label("Run Cleanup", systemImage: "play.fill")
@@ -159,5 +159,23 @@ struct EmptyScanView: View {
         .foregroundStyle(.secondary)
     }
     .frame(maxWidth: .infinity, minHeight: 420)
+  }
+}
+
+struct ErrorBanner: View {
+  let message: String
+
+  var body: some View {
+    Label(message, systemImage: "exclamationmark.triangle.fill")
+      .font(.system(size: 13, weight: .medium))
+      .foregroundStyle(.red)
+      .padding(AppSpacing.medium)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(Color.red.opacity(0.08))
+      .overlay {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+          .stroke(Color.red.opacity(0.2))
+      }
+      .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
   }
 }

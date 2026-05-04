@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.2 - 2026-05-04
+
+- Fixed a launch-time scan hang caused by process detection waiting on `ps`
+  output before reading it.
+- Replaced shell process detection with native macOS
+  `NSWorkspace.runningApplications`.
+- Added a placeholder dashboard so the app shows useful state while scanning.
+- Added visible scan errors instead of leaving the app on a loading state.
+
 ## v1.0.1 - 2026-05-04
 
 - Replaced the README screenshot with a cropped app-only screenshot.

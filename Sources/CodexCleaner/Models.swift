@@ -39,6 +39,12 @@ struct CleanerReport: Equatable {
   var plan: [CleanupPlanItem]
 }
 
+enum ScanState: Equatable {
+  case idle
+  case scanning
+  case failed(String)
+}
+
 struct FileRecord: Identifiable, Equatable {
   var id: String { url.path }
   var url: URL

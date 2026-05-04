@@ -36,7 +36,11 @@ final class CodexCleaner {
     codexHome.appendingPathComponent("worktrees")
   }
 
-  func scan() -> CleanerReport {
+  func scan() throws -> CleanerReport {
+    guard fileManager.fileExists(atPath: codexHome.path) else {
+      throw CleanerError.codexHomeMissing(codexHome.path)
+    }
+
     let activeSessions = files(
       under: activeSessionsDirectory,
       matching: { $0.pathExtension == "jsonl" }
@@ -87,7 +91,7 @@ final class CodexCleaner {
   }
 
   func clean() throws -> CleanupResult {
-    let report = scan()
+    let report = try scan()
     if report.metrics.codexIsRunning {
       throw CleanerError.codexIsRunning
     }
@@ -445,29 +449,15 @@ final class CodexCleaner {
   }
 
   private static func detectCodexRunning() -> Bool {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/bin/ps")
-    process.arguments = ["-axo", "comm,args"]
-
-    let pipe = Pipe()
-    process.standardOutput = pipe
-
-    do {
-      try process.run()
-      process.waitUntilExit()
-    } catch {
-      return true
-    }
-
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    let output = String(data: data, encoding: .utf8) ?? ""
-    return output
-      .split(separator: "\n")
-      .contains { line in
-        let value = String(line)
-        return value.contains("/Codex.app/")
-          || value.contains("Codex.app/Contents/MacOS/Codex")
+    NSWorkspace.shared.runningApplications.contains { app in
+      if app.bundleURL?.lastPathComponent == "Codex.app" {
+        return true
       }
+      if app.executableURL?.path.contains("/Codex.app/") == true {
+        return true
+      }
+      return app.localizedName == "Codex"
+    }
   }
 
   private func record(for url: URL) -> FileRecord {

@@ -70,7 +70,7 @@ final class CodexCleanerTests: XCTestCase {
       codexRunningProvider: { false }
     )
 
-    let report = cleaner.scan()
+    let report = try cleaner.scan()
     XCTAssertEqual(report.metrics.activeSessionCount, 2)
     XCTAssertEqual(report.metrics.staleSessionCount, 1)
     XCTAssertEqual(report.metrics.staleWorktreeCount, 1)

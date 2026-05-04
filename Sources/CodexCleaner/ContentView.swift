@@ -1,23 +1,24 @@
 import SwiftUI
 
 struct ContentView: View {
-  @State private var report: CleanerReport?
+  @State private var report = CleanerReport.placeholder
   @State private var result: CleanupResult?
-  @State private var isWorking = false
+  @State private var scanState = ScanState.idle
+  @State private var isCleaning = false
   @State private var message = "Ready to scan ~/.codex."
 
   private let cleaner = CodexCleaner()
 
   var body: some View {
     HStack(spacing: 0) {
-      AppSidebar(codexHome: report?.metrics.codexHome)
+      AppSidebar(codexHome: report.metrics.codexHome)
 
       Divider()
 
       VStack(spacing: 0) {
         AppToolbar(
           message: message,
-          isWorking: isWorking,
+          isScanning: scanState == .scanning,
           cleanupIsDisabled: cleanupIsDisabled,
           onReveal: cleaner.revealCodexHome,
           onScan: { Task { await scan() } },
@@ -26,7 +27,7 @@ struct ContentView: View {
 
         Divider()
 
-        mainContent
+        mainContent(report)
       }
       .background(Color(nsColor: .textBackgroundColor))
     }
@@ -38,29 +39,29 @@ struct ContentView: View {
   }
 
   private var cleanupIsDisabled: Bool {
-    isWorking || (report?.metrics.codexIsRunning ?? true)
+    isCleaning || scanState == .scanning || report.metrics.codexIsRunning
   }
 
-  private var mainContent: some View {
+  private func mainContent(_ report: CleanerReport) -> some View {
     ScrollView {
       VStack(alignment: .leading, spacing: AppSpacing.large) {
-        if let report {
-          MetricsStrip(metrics: report.metrics)
+        if case .failed(let errorMessage) = scanState {
+          ErrorBanner(message: errorMessage)
+        }
 
-          HStack(alignment: .top, spacing: AppSpacing.large) {
-            VStack(alignment: .leading, spacing: AppSpacing.large) {
-              CleanupPlanView(plan: report.plan)
-              LargestFilesView(files: report.largestFiles)
-            }
+        MetricsStrip(metrics: report.metrics)
 
-            StatusPanel(metrics: report.metrics)
+        HStack(alignment: .top, spacing: AppSpacing.large) {
+          VStack(alignment: .leading, spacing: AppSpacing.large) {
+            CleanupPlanView(plan: report.plan)
+            LargestFilesView(files: report.largestFiles)
           }
 
-          if let result {
-            CleanupResultView(result: result)
-          }
-        } else {
-          EmptyScanView(message: message)
+          StatusPanel(metrics: report.metrics)
+        }
+
+        if let result {
+          CleanupResultView(result: result)
         }
       }
       .padding(AppSpacing.page)
@@ -69,22 +70,28 @@ struct ContentView: View {
   }
 
   private func scan() async {
-    isWorking = true
-    defer { isWorking = false }
+    scanState = .scanning
+    message = "Scanning ~/.codex..."
 
-    let newReport = await Task.detached {
-      CodexCleaner().scan()
-    }.value
+    do {
+      let newReport = try await Task.detached {
+        try CodexCleaner().scan()
+      }.value
 
-    report = newReport
-    message = newReport.metrics.codexIsRunning
-      ? "Codex is open, so cleanup is locked. Close Codex and relaunch this app to run it."
-      : "Scan complete. One-button cleanup is ready."
+      report = newReport
+      scanState = .idle
+      message = newReport.metrics.codexIsRunning
+        ? "Codex is open, so cleanup is locked. Close Codex and relaunch this app to run it."
+        : "Scan complete. One-button cleanup is ready."
+    } catch {
+      scanState = .failed(error.localizedDescription)
+      message = "Scan failed."
+    }
   }
 
   private func clean() async {
-    isWorking = true
-    defer { isWorking = false }
+    isCleaning = true
+    defer { isCleaning = false }
 
     do {
       let cleanup = try await Task.detached {
