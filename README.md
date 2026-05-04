@@ -1,12 +1,26 @@
 # Codex Cleaner
 
-A small native macOS utility for keeping the Codex desktop app fast by cleaning
-up local `~/.codex` state safely.
+Codex Cleaner is an open-source native macOS utility for keeping the Codex
+desktop app fast by safely maintaining local `~/.codex` state.
 
 Codex Cleaner scans first, backs up important state, then archives stale chats,
 worktrees, and oversized logs. It does not delete your Codex sessions.
 
-![Codex Cleaner overview](docs/screenshots/codex-cleaner-overview.png)
+![Codex Cleaner app overview](docs/screenshots/codex-cleaner-app.png)
+
+## Social Preview
+
+Use this image when sharing the project or configuring the GitHub repository
+social preview:
+
+![Codex Cleaner social preview](docs/social-preview.jpg)
+
+```txt
+docs/social-preview.jpg
+```
+
+The image is 1280 x 640 and under 1 MB, matching GitHub's recommended social
+preview format.
 
 ## Credit
 
@@ -17,7 +31,8 @@ The tweet described a practical 15-point maintenance checklist: inspect first,
 back up important state, archive stale chats/worktrees/logs, prune dead config,
 verify the result, and make the process boring enough to run regularly.
 
-Codex Cleaner turns that checklist into a one-button native Mac app.
+Codex Cleaner turns that checklist into a one-button native Mac app for
+developers using Codex, SwiftUI, and local AI coding workflows.
 
 ## What It Does
 
