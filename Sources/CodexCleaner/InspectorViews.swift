@@ -37,22 +37,34 @@ struct InspectorGroup<Content: View>: View {
 }
 
 struct PrimaryButtonStyle: ButtonStyle {
+  @Environment(\.isEnabled) private var isEnabled
+
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .font(.system(size: 13, weight: .semibold))
-      .foregroundStyle(.white)
+      .foregroundStyle(isEnabled ? .white : .secondary)
       .padding(.horizontal, AppSpacing.medium)
       .padding(.vertical, 7)
-      .background(configuration.isPressed ? Color.blue.opacity(0.78) : Color.blue)
+      .background(background(configuration))
       .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+      .opacity(isEnabled ? 1 : 0.72)
+  }
+
+  private func background(_ configuration: Configuration) -> Color {
+    if !isEnabled {
+      return Color(nsColor: .separatorColor).opacity(0.22)
+    }
+    return configuration.isPressed ? Color.blue.opacity(0.78) : Color.blue
   }
 }
 
 struct UtilityButtonStyle: ButtonStyle {
+  @Environment(\.isEnabled) private var isEnabled
+
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .font(.system(size: 13, weight: .medium))
-      .foregroundStyle(.primary)
+      .foregroundStyle(isEnabled ? .primary : .secondary)
       .padding(.horizontal, 10)
       .padding(.vertical, 7)
       .background(background(configuration))
@@ -61,9 +73,13 @@ struct UtilityButtonStyle: ButtonStyle {
           .stroke(Color(nsColor: .separatorColor).opacity(0.6))
       }
       .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+      .opacity(isEnabled ? 1 : 0.68)
   }
 
   private func background(_ configuration: Configuration) -> Color {
+    if !isEnabled {
+      return Color(nsColor: .separatorColor).opacity(0.16)
+    }
     if configuration.isPressed {
       return Color(nsColor: .separatorColor).opacity(0.34)
     }

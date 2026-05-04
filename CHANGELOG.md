@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.4 - 2026-05-04
+
+- Made disabled cleanup controls visually disabled.
+- Added a clear cleanup locked state when Codex is open.
+- Added visible cleanup failure messaging instead of only updating toolbar text.
+- Added tooltip/help text explaining why cleanup cannot run.
+
 ## v1.0.3 - 2026-05-04
 
 - Added visible scan progress in the toolbar and main dashboard.

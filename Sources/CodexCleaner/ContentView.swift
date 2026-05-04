@@ -6,6 +6,7 @@ struct ContentView: View {
   @State private var scanState = ScanState.idle
   @State private var scanProgress = ScanProgress.idle
   @State private var isCleaning = false
+  @State private var cleanupError: String?
   @State private var message = "Ready to scan ~/.codex."
 
   private let cleaner = CodexCleaner()
@@ -22,6 +23,7 @@ struct ContentView: View {
           isScanning: scanState == .scanning,
           progress: scanProgress,
           cleanupIsDisabled: cleanupIsDisabled,
+          cleanupDisabledReason: cleanupDisabledReason,
           onReveal: cleaner.revealCodexHome,
           onScan: { Task { await scan() } },
           onClean: { Task { await clean() } }
@@ -44,9 +46,26 @@ struct ContentView: View {
     isCleaning || scanState == .scanning || report.metrics.codexIsRunning
   }
 
+  private var cleanupDisabledReason: String? {
+    if isCleaning {
+      return "Cleanup is already running."
+    }
+    if scanState == .scanning {
+      return "Wait for the scan to finish before running cleanup."
+    }
+    if report.metrics.codexIsRunning {
+      return "Close Codex before cleanup so local databases are not touched from two places."
+    }
+    return nil
+  }
+
   private func mainContent(_ report: CleanerReport) -> some View {
     ScrollView {
       VStack(alignment: .leading, spacing: AppSpacing.large) {
+        if report.metrics.codexIsRunning {
+          CleanupBlockedView(message: cleanupDisabledReason ?? "Cleanup is locked.")
+        }
+
         if case .failed(let errorMessage) = scanState {
           ErrorStateView(
             title: "Scan Failed",
@@ -58,6 +77,15 @@ struct ContentView: View {
 
         if scanState == .scanning {
           ProgressPanel(progress: scanProgress)
+        }
+
+        if let cleanupError {
+          ErrorStateView(
+            title: "Cleanup Did Not Run",
+            message: cleanupError,
+            actionTitle: "Scan Again",
+            action: { Task { await scan() } }
+          )
         }
 
         MetricsStrip(metrics: report.metrics)
@@ -103,6 +131,7 @@ struct ContentView: View {
         try CodexCleaner().scan()
       }.value
 
+      cleanupError = nil
       scanProgress = ScanProgress(
         title: "Preparing report",
         detail: "Building cleanup plan and readiness checks.",
@@ -118,7 +147,7 @@ struct ContentView: View {
         fraction: 1
       )
       message = newReport.metrics.codexIsRunning
-        ? "Codex is open, so cleanup is locked. Close Codex and relaunch this app to run it."
+        ? "Cleanup locked. Close Codex to continue."
         : "Scan complete. One-button cleanup is ready."
     } catch {
       scanState = .failed(error.localizedDescription)
@@ -132,8 +161,16 @@ struct ContentView: View {
   }
 
   private func clean() async {
+    if let cleanupDisabledReason {
+      cleanupError = cleanupDisabledReason
+      message = "Cleanup locked. Close Codex to continue."
+      return
+    }
+
     isCleaning = true
     defer { isCleaning = false }
+    cleanupError = nil
+    message = "Running cleanup..."
 
     do {
       let cleanup = try await Task.detached {
@@ -143,6 +180,7 @@ struct ContentView: View {
       message = "Cleanup complete. Codex has less active history to carry."
       await scan()
     } catch {
+      cleanupError = error.localizedDescription
       message = error.localizedDescription
     }
   }
