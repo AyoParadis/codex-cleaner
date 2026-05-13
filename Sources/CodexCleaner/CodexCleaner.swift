@@ -91,13 +91,15 @@ final class CodexCleaner {
   }
 
   func clean() throws -> CleanupResult {
-    let report = try scan()
-    if report.metrics.codexIsRunning {
+    let before = try scan()
+    if before.metrics.codexIsRunning {
       throw CleanerError.codexIsRunning
     }
 
     let backupDirectory = try createBackup()
     var result = CleanupResult(
+      before: before,
+      after: before,
       backupDirectory: backupDirectory,
       archivedSessions: 0,
       archivedWorktrees: 0,
@@ -143,6 +145,7 @@ final class CodexCleaner {
     }
 
     result.prunedProjects = try pruneMissingConfigProjects()
+    result.after = try scan()
     result.verificationNotes = verify(after: result)
     return result
   }
@@ -152,41 +155,84 @@ final class CodexCleaner {
   }
 
   private func makePlan(metrics: CleanerMetrics) -> [CleanupPlanItem] {
-    [
-      CleanupPlanItem(
-        title: "Back up important Codex state",
-        detail: "Config, state databases, session index, memories, rules, and automations are copied before cleanup.",
-        impact: "Safety first"
-      ),
-      CleanupPlanItem(
-        title: "Archive stale active chats",
-        detail: "\(metrics.staleSessionCount) session files older than \(staleSessionDays) days can move out of the hot sessions folder.",
-        impact: formatBytes(metrics.activeSessionBytes)
-      ),
-      CleanupPlanItem(
-        title: "Move stale worktrees",
-        detail: "\(metrics.staleWorktreeCount) old worktree folders can move to archived_worktrees.",
-        impact: "Keeps active work light"
-      ),
-      CleanupPlanItem(
-        title: "Rotate oversized logs",
-        detail: "\(metrics.largeLogCount) log files are over \(formatBytes(largeLogBytes)) and can be archived so Codex starts fresh.",
-        impact: formatBytes(metrics.logBytes)
-      ),
-      CleanupPlanItem(
-        title: "Prune missing config projects",
-        detail: "\(metrics.missingProjectCount) trusted project entries point to paths that no longer exist.",
-        impact: "Cleaner config"
-      ),
-      CleanupPlanItem(
-        title: metrics.codexIsRunning ? "Close Codex before cleanup" : "Ready to clean",
-        detail: metrics.codexIsRunning
-          ? "The app will scan while Codex is open, but cleanup waits so local databases are not touched from two places."
-          : "Codex is not running, so the one-button cleanup can proceed.",
-        impact: metrics.codexIsRunning ? "Blocked" : "Clear",
-        isBlocked: metrics.codexIsRunning
-      ),
-    ]
+    var plan: [CleanupPlanItem] = []
+    let hasCleanupWork = metrics.staleSessionCount > 0
+      || metrics.staleWorktreeCount > 0
+      || metrics.largeLogCount > 0
+      || metrics.missingProjectCount > 0
+
+    if hasCleanupWork {
+      plan.append(
+        CleanupPlanItem(
+          title: "Back up important Codex state",
+          detail: "Config, state databases, session index, memories, rules, and automations are copied before cleanup.",
+          impact: "Safety first"
+        )
+      )
+    }
+
+    if metrics.staleSessionCount > 0 {
+      plan.append(
+        CleanupPlanItem(
+          title: "Archive stale active chats",
+          detail: "\(metrics.staleSessionCount) session files older than \(staleSessionDays) days can move out of the hot sessions folder.",
+          impact: formatBytes(metrics.activeSessionBytes)
+        )
+      )
+    }
+
+    if metrics.staleWorktreeCount > 0 {
+      plan.append(
+        CleanupPlanItem(
+          title: "Move stale worktrees",
+          detail: "\(metrics.staleWorktreeCount) old worktree folders can move to archived_worktrees.",
+          impact: "Keeps active work light"
+        )
+      )
+    }
+
+    if metrics.largeLogCount > 0 {
+      plan.append(
+        CleanupPlanItem(
+          title: "Rotate oversized logs",
+          detail: "\(metrics.largeLogCount) log files are over \(formatBytes(largeLogBytes)) and can be archived so Codex starts fresh.",
+          impact: formatBytes(metrics.logBytes)
+        )
+      )
+    }
+
+    if metrics.missingProjectCount > 0 {
+      plan.append(
+        CleanupPlanItem(
+          title: "Prune missing config projects",
+          detail: "\(metrics.missingProjectCount) trusted project entries point to paths that no longer exist.",
+          impact: "Cleaner config"
+        )
+      )
+    }
+
+    if !hasCleanupWork {
+      plan.append(
+        CleanupPlanItem(
+          title: "Nothing to clean",
+          detail: "The scan did not find stale chats, stale worktrees, oversized logs, or missing project entries.",
+          impact: "Clear"
+        )
+      )
+    }
+
+    if metrics.codexIsRunning {
+      plan.append(
+        CleanupPlanItem(
+          title: "Close Codex before cleanup",
+          detail: "The app can scan while Codex is open, but cleanup waits so local databases are not touched from two places.",
+          impact: "Blocked",
+          isBlocked: true
+        )
+      )
+    }
+
+    return plan
   }
 
   private func createBackup() throws -> URL {

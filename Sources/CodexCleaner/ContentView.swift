@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-  @State private var report = CleanerReport.placeholder
+  @State private var report: CleanerReport?
   @State private var result: CleanupResult?
   @State private var scanState = ScanState.idle
   @State private var scanProgress = ScanProgress.idle
@@ -13,7 +13,7 @@ struct ContentView: View {
 
   var body: some View {
     HStack(spacing: 0) {
-      AppSidebar(codexHome: report.metrics.codexHome)
+      AppSidebar(codexHome: report?.metrics.codexHome)
 
       Divider()
 
@@ -31,7 +31,7 @@ struct ContentView: View {
 
         Divider()
 
-        mainContent(report)
+        mainContent
       }
       .background(Color(nsColor: .textBackgroundColor))
     }
@@ -43,7 +43,8 @@ struct ContentView: View {
   }
 
   private var cleanupIsDisabled: Bool {
-    isCleaning || scanState == .scanning || report.metrics.codexIsRunning
+    isCleaning || scanState == .scanning || report == nil
+      || report?.metrics.codexIsRunning == true
   }
 
   private var cleanupDisabledReason: String? {
@@ -53,13 +54,16 @@ struct ContentView: View {
     if scanState == .scanning {
       return "Wait for the scan to finish before running cleanup."
     }
+    guard let report else {
+      return "Run a scan before cleanup."
+    }
     if report.metrics.codexIsRunning {
       return "Close Codex before cleanup so local databases are not touched from two places."
     }
     return nil
   }
 
-  private func mainContent(_ report: CleanerReport) -> some View {
+  private var mainContent: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: AppSpacing.large) {
         ActionStatusPanel(
@@ -72,19 +76,23 @@ struct ContentView: View {
           action: actionStatusAction
         )
 
-        MetricsStrip(metrics: report.metrics)
-
-        HStack(alignment: .top, spacing: AppSpacing.large) {
-          VStack(alignment: .leading, spacing: AppSpacing.large) {
-            CleanupPlanView(plan: report.plan)
-            LargestFilesView(files: report.largestFiles)
-          }
-
-          StatusPanel(metrics: report.metrics)
-        }
-
         if let result {
           CleanupResultView(result: result)
+        }
+
+        if let report {
+          MetricsStrip(metrics: report.metrics)
+
+          HStack(alignment: .top, spacing: AppSpacing.large) {
+            VStack(alignment: .leading, spacing: AppSpacing.large) {
+              CleanupPlanView(plan: report.plan)
+              LargestFilesView(files: report.largestFiles)
+            }
+
+            StatusPanel(metrics: report.metrics)
+          }
+        } else {
+          EmptyScanView(message: emptyScanMessage)
         }
       }
       .padding(AppSpacing.page)
@@ -161,8 +169,8 @@ struct ContentView: View {
         try CodexCleaner().clean()
       }.value
       result = cleanup
+      report = cleanup.after
       message = "Cleanup complete. Codex has less active history to carry."
-      await scan()
     } catch {
       cleanupError = error.localizedDescription
       message = error.localizedDescription
@@ -183,6 +191,9 @@ struct ContentView: View {
     if case .failed = scanState {
       return "Scan Failed"
     }
+    guard let report else {
+      return "Scan Needed"
+    }
     if report.metrics.codexIsRunning {
       return "Cleanup Locked"
     }
@@ -198,6 +209,9 @@ struct ContentView: View {
     }
     if case .failed(let errorMessage) = scanState {
       return errorMessage
+    }
+    if report == nil {
+      return "Run a scan to inspect local Codex state."
     }
     if let cleanupDisabledReason {
       return "\(cleanupDisabledReason) Quit Codex, then run cleanup."
@@ -215,6 +229,9 @@ struct ContentView: View {
     if case .failed = scanState {
       return "exclamationmark.triangle.fill"
     }
+    guard let report else {
+      return "magnifyingglass"
+    }
     if report.metrics.codexIsRunning {
       return "lock.fill"
     }
@@ -230,6 +247,9 @@ struct ContentView: View {
     }
     if case .failed = scanState {
       return .red
+    }
+    guard let report else {
+      return .blue
     }
     if report.metrics.codexIsRunning {
       return .orange
@@ -254,5 +274,12 @@ struct ContentView: View {
   private var actionStatusAction: (() -> Void)? {
     guard actionStatusActionTitle != nil else { return nil }
     return { Task { await scan() } }
+  }
+
+  private var emptyScanMessage: String {
+    if scanState == .scanning {
+      return scanProgress.detail
+    }
+    return "No scan results yet. Run a scan to show real Codex data."
   }
 }

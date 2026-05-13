@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.6 - 2026-05-14
+
+- Removed placeholder cleanup data before the first real scan completes.
+- Removed nonfunctional sidebar destinations so only working controls remain.
+- Added before-and-after cleanup results for active chats, logs, stale items, and missing projects.
+- Filtered the cleanup plan to show only actions backed by current scan data.
+- Added tests for cleanup result comparisons and plan filtering.
+
 ## v1.0.5 - 2026-05-04
 
 - Stabilized layout during scan and cleanup state changes.

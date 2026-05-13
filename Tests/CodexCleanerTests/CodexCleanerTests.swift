@@ -80,6 +80,16 @@ final class CodexCleanerTests: XCTestCase {
 
     let result = try cleaner.clean()
 
+    XCTAssertEqual(result.before.metrics.activeSessionCount, 2)
+    XCTAssertEqual(result.before.metrics.staleSessionCount, 1)
+    XCTAssertEqual(result.before.metrics.staleWorktreeCount, 1)
+    XCTAssertEqual(result.before.metrics.largeLogCount, 1)
+    XCTAssertEqual(result.before.metrics.missingProjectCount, 1)
+    XCTAssertEqual(result.after.metrics.activeSessionCount, 1)
+    XCTAssertEqual(result.after.metrics.staleSessionCount, 0)
+    XCTAssertEqual(result.after.metrics.staleWorktreeCount, 0)
+    XCTAssertEqual(result.after.metrics.largeLogCount, 0)
+    XCTAssertEqual(result.after.metrics.missingProjectCount, 0)
     XCTAssertEqual(result.archivedSessions, 1)
     XCTAssertEqual(result.archivedWorktrees, 1)
     XCTAssertEqual(result.rotatedLogs, 3)
@@ -181,6 +191,79 @@ final class CodexCleanerTests: XCTestCase {
     XCTAssertTrue(FileManager.default.fileExists(atPath: secondBackup.path))
   }
 
+  func testCleanupPlanHidesNonApplicableActions() throws {
+    let root = try makeTemporaryCodexHome()
+    let existingProject = root.appendingPathComponent("existing-project")
+    try FileManager.default.createDirectory(
+      at: existingProject,
+      withIntermediateDirectories: true
+    )
+
+    try write(
+      """
+      [projects."\((existingProject.path))"]
+      trust_level = "trusted"
+      """,
+      to: root.appendingPathComponent("config.toml")
+    )
+
+    let recentSession = root
+      .appendingPathComponent("sessions/2026/05/04/recent.jsonl")
+    try write("recent chat", to: recentSession)
+    try setModifiedAt(daysAgo: 1, for: recentSession)
+
+    let activeWorktree = root.appendingPathComponent("worktrees/active-worktree")
+    try FileManager.default.createDirectory(
+      at: activeWorktree,
+      withIntermediateDirectories: true
+    )
+    try setModifiedAt(daysAgo: 1, for: activeWorktree)
+
+    try write("small", to: root.appendingPathComponent("logs_2.sqlite"))
+
+    let cleaner = CodexCleaner(
+      codexHome: root,
+      staleSessionDays: 10,
+      staleWorktreeDays: 14,
+      largeLogBytes: 1_024,
+      codexRunningProvider: { false }
+    )
+
+    let titles = try planTitles(from: cleaner)
+
+    XCTAssertEqual(titles, ["Nothing to clean"])
+    XCTAssertFalse(titles.contains("Archive stale active chats"))
+    XCTAssertFalse(titles.contains("Move stale worktrees"))
+    XCTAssertFalse(titles.contains("Rotate oversized logs"))
+    XCTAssertFalse(titles.contains("Prune missing config projects"))
+  }
+
+  func testCleanupPlanShowsOnlyApplicableActions() throws {
+    let root = try makeTemporaryCodexHome()
+    let staleSession = root
+      .appendingPathComponent("sessions/2026/04/01/old.jsonl")
+    try write("old chat", to: staleSession)
+    try setModifiedAt(daysAgo: 20, for: staleSession)
+
+    let cleaner = CodexCleaner(
+      codexHome: root,
+      staleSessionDays: 10,
+      staleWorktreeDays: 14,
+      largeLogBytes: 1_024,
+      codexRunningProvider: { false }
+    )
+
+    let titles = try planTitles(from: cleaner)
+
+    XCTAssertEqual(
+      titles,
+      [
+        "Back up important Codex state",
+        "Archive stale active chats",
+      ]
+    )
+  }
+
   private func makeTemporaryCodexHome() throws -> URL {
     let root = FileManager.default.temporaryDirectory
       .appendingPathComponent("CodexCleanerTests-\(UUID().uuidString)")
@@ -217,5 +300,9 @@ final class CodexCleanerTests: XCTestCase {
       at: url,
       includingPropertiesForKeys: nil
     )
+  }
+
+  private func planTitles(from cleaner: CodexCleaner) throws -> [String] {
+    try cleaner.scan().plan.map(\.title)
   }
 }

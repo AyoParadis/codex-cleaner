@@ -23,6 +23,8 @@ struct CleanupPlanItem: Identifiable, Equatable {
 }
 
 struct CleanupResult: Equatable {
+  var before: CleanerReport
+  var after: CleanerReport
   var backupDirectory: URL?
   var archivedSessions: Int
   var archivedWorktrees: Int

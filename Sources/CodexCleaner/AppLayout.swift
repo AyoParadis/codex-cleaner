@@ -19,9 +19,6 @@ struct AppSidebar: View {
         icon: "gauge.with.dots.needle.bottom.50percent",
         isSelected: true
       )
-      SidebarItem("Archives", icon: "archivebox")
-      SidebarItem("Logs", icon: "doc.text.magnifyingglass")
-      SidebarItem("Config", icon: "gearshape")
 
       Spacer()
 
@@ -129,17 +126,22 @@ struct AppToolbar: View {
   }
 
   private var cleanupButtonTitle: String {
-    if cleanupIsDisabled, cleanupDisabledReason != nil, !isScanning {
+    if showsLockedCleanupState {
       return "Cleanup Locked"
     }
     return "Run Cleanup"
   }
 
   private var cleanupButtonIcon: String {
-    if cleanupIsDisabled, cleanupDisabledReason != nil, !isScanning {
+    if showsLockedCleanupState {
       return "lock.fill"
     }
     return "play.fill"
+  }
+
+  private var showsLockedCleanupState: Bool {
+    cleanupIsDisabled && cleanupDisabledReason?.hasPrefix("Close Codex") == true
+      && !isScanning
   }
 }
 
@@ -237,42 +239,6 @@ struct ActionStatusPanel: View {
     .overlay {
       RoundedRectangle(cornerRadius: 8, style: .continuous)
         .stroke(tint.opacity(0.18))
-    }
-    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-  }
-}
-
-struct CleanupBlockedView: View {
-  let message: String
-
-  var body: some View {
-    HStack(alignment: .top, spacing: AppSpacing.medium) {
-      Image(systemName: "lock.fill")
-        .font(.system(size: 18, weight: .semibold))
-        .foregroundStyle(.orange)
-        .frame(width: 34, height: 34)
-        .background(Color.orange.opacity(0.12))
-        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-
-      VStack(alignment: .leading, spacing: 4) {
-        Text("Cleanup Locked")
-          .font(.system(size: 14, weight: .semibold))
-        Text(message)
-          .font(.system(size: 12, weight: .medium))
-          .foregroundStyle(.secondary)
-        Text("Quit the Codex desktop app, reopen Codex Cleaner from Applications, then run cleanup.")
-          .font(.system(size: 12, weight: .medium))
-          .foregroundStyle(.secondary)
-      }
-
-      Spacer()
-    }
-    .padding(AppSpacing.medium)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background(Color.orange.opacity(0.07))
-    .overlay {
-      RoundedRectangle(cornerRadius: 8, style: .continuous)
-        .stroke(Color.orange.opacity(0.2))
     }
     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
   }

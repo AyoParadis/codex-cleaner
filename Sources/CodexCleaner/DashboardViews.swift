@@ -119,12 +119,19 @@ struct LargestFilesView: View {
 
   var body: some View {
     InspectorGroup("Largest Hot Files", subtitle: "Active chats and logs by size.") {
-      VStack(spacing: 0) {
-        ForEach(Array(files.enumerated()), id: \.element.id) { index, file in
-          FileRecordRow(file: file)
-          if index < files.count - 1 {
-            Divider()
-              .padding(.leading, 106)
+      if files.isEmpty {
+        Text("No active chat or log files were found in this scan.")
+          .font(.system(size: 12, weight: .medium))
+          .foregroundStyle(.secondary)
+          .panelPadding()
+      } else {
+        VStack(spacing: 0) {
+          ForEach(Array(files.enumerated()), id: \.element.id) { index, file in
+            FileRecordRow(file: file)
+            if index < files.count - 1 {
+              Divider()
+                .padding(.leading, 106)
+            }
           }
         }
       }
@@ -226,7 +233,7 @@ struct CleanupResultView: View {
 
   var body: some View {
     InspectorGroup(
-      "Last Cleanup",
+      "Cleanup Results",
       subtitle: "Moved \(formatBytes(result.bytesMoved)); backup: \(backupPath)."
     ) {
       VStack(alignment: .leading, spacing: AppSpacing.medium) {
@@ -236,6 +243,40 @@ struct CleanupResultView: View {
           ResultPill("\(result.rotatedLogs)", "Logs")
           ResultPill("\(result.prunedProjects)", "Projects")
         }
+
+        VStack(spacing: 0) {
+          ComparisonRow(
+            title: "Active chat size",
+            before: formatBytes(result.before.metrics.activeSessionBytes),
+            after: formatBytes(result.after.metrics.activeSessionBytes)
+          )
+          ComparisonRow(
+            title: "Log size",
+            before: formatBytes(result.before.metrics.logBytes),
+            after: formatBytes(result.after.metrics.logBytes)
+          )
+          ComparisonRow(
+            title: "Stale sessions",
+            before: "\(result.before.metrics.staleSessionCount)",
+            after: "\(result.after.metrics.staleSessionCount)"
+          )
+          ComparisonRow(
+            title: "Stale worktrees",
+            before: "\(result.before.metrics.staleWorktreeCount)",
+            after: "\(result.after.metrics.staleWorktreeCount)"
+          )
+          ComparisonRow(
+            title: "Oversized logs",
+            before: "\(result.before.metrics.largeLogCount)",
+            after: "\(result.after.metrics.largeLogCount)"
+          )
+          ComparisonRow(
+            title: "Missing projects",
+            before: "\(result.before.metrics.missingProjectCount)",
+            after: "\(result.after.metrics.missingProjectCount)"
+          )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
         ForEach(result.verificationNotes, id: \.self) { note in
           Label(note, systemImage: "checkmark.seal.fill")
@@ -249,6 +290,35 @@ struct CleanupResultView: View {
 
   private var backupPath: String {
     result.backupDirectory?.path ?? "none"
+  }
+}
+
+struct ComparisonRow: View {
+  let title: String
+  let before: String
+  let after: String
+
+  var body: some View {
+    HStack(spacing: AppSpacing.medium) {
+      Text(title)
+        .font(.system(size: 12, weight: .medium))
+        .foregroundStyle(.secondary)
+
+      Spacer()
+
+      Text(before)
+        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+        .frame(width: 96, alignment: .trailing)
+      Image(systemName: "arrow.right")
+        .font(.system(size: 11, weight: .semibold))
+        .foregroundStyle(.secondary)
+      Text(after)
+        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+        .frame(width: 96, alignment: .trailing)
+    }
+    .padding(.horizontal, AppSpacing.medium)
+    .padding(.vertical, 8)
+    .background(Color(nsColor: .textBackgroundColor))
   }
 }
 
