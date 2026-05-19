@@ -6,6 +6,7 @@ struct ContentView: View {
   @State private var scanState = ScanState.idle
   @State private var scanProgress = ScanProgress.idle
   @State private var isCleaning = false
+  @State private var deleteGeneratedBloat = false
   @State private var cleanupError: String?
   @State private var message = "Ready to scan ~/.codex."
 
@@ -85,6 +86,10 @@ struct ContentView: View {
 
           HStack(alignment: .top, spacing: AppSpacing.large) {
             VStack(alignment: .leading, spacing: AppSpacing.large) {
+              GeneratedBloatOptionView(
+                metrics: report.metrics,
+                deleteGeneratedBloat: $deleteGeneratedBloat
+              )
               CleanupPlanView(plan: report.plan)
               LargestFilesView(files: report.largestFiles)
             }
@@ -165,12 +170,17 @@ struct ContentView: View {
     message = "Running cleanup..."
 
     do {
+      let shouldDeleteGeneratedBloat = deleteGeneratedBloat
       let cleanup = try await Task.detached {
-        try CodexCleaner().clean()
+        try CodexCleaner().clean(
+          deleteGeneratedBloat: shouldDeleteGeneratedBloat
+        )
       }.value
       result = cleanup
       report = cleanup.after
-      message = "Cleanup complete. Codex has less active history to carry."
+      message = cleanup.bytesDeleted > 0
+        ? "Cleanup complete. Generated bloat was deleted by request."
+        : "Cleanup complete. Codex has less active history to carry."
     } catch {
       cleanupError = error.localizedDescription
       message = error.localizedDescription

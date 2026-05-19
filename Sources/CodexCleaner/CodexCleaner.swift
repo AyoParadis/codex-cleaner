@@ -118,7 +118,7 @@ final class CodexCleaner {
     )
   }
 
-  func clean() throws -> CleanupResult {
+  func clean(deleteGeneratedBloat: Bool = false) throws -> CleanupResult {
     let before = try scan()
     if before.metrics.codexIsRunning {
       throw CleanerError.codexIsRunning
@@ -133,9 +133,12 @@ final class CodexCleaner {
       archivedWorktrees: 0,
       archivedGeneratedImages: 0,
       archivedShellSnapshots: 0,
+      deletedGeneratedImages: 0,
+      deletedShellSnapshots: 0,
       rotatedLogs: 0,
       prunedProjects: 0,
       bytesMoved: 0,
+      bytesDeleted: 0,
       verificationNotes: []
     )
 
@@ -170,9 +173,16 @@ final class CodexCleaner {
       directories(under: generatedImagesDirectory),
       olderThanDays: staleGeneratedArtifactDays
     ) {
-      result.bytesMoved += directorySize(directory)
-      try move(directory, toDirectory: generatedImageArchive)
-      result.archivedGeneratedImages += 1
+      let size = directorySize(directory)
+      if deleteGeneratedBloat {
+        result.bytesDeleted += size
+        try fileManager.removeItem(at: directory)
+        result.deletedGeneratedImages += 1
+      } else {
+        result.bytesMoved += size
+        try move(directory, toDirectory: generatedImageArchive)
+        result.archivedGeneratedImages += 1
+      }
     }
 
     let shellSnapshotArchive = codexHome
@@ -185,9 +195,16 @@ final class CodexCleaner {
       ),
       olderThanDays: staleGeneratedArtifactDays
     ) {
-      result.bytesMoved += fileSize(file)
-      try move(file, toDirectory: shellSnapshotArchive)
-      result.archivedShellSnapshots += 1
+      let size = fileSize(file)
+      if deleteGeneratedBloat {
+        result.bytesDeleted += size
+        try fileManager.removeItem(at: file)
+        result.deletedShellSnapshots += 1
+      } else {
+        result.bytesMoved += size
+        try move(file, toDirectory: shellSnapshotArchive)
+        result.archivedShellSnapshots += 1
+      }
     }
 
     let logArchive = codexHome
@@ -425,6 +442,9 @@ final class CodexCleaner {
     }
     if result.rotatedLogs == 0 {
       notes.append("No oversized logs needed rotation.")
+    }
+    if result.bytesDeleted > 0 {
+      notes.append("Generated bloat was permanently deleted by request.")
     }
     return notes
   }

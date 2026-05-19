@@ -119,6 +119,59 @@ struct CleanupPlanRow: View {
   }
 }
 
+struct GeneratedBloatOptionView: View {
+  let metrics: CleanerMetrics
+  @Binding var deleteGeneratedBloat: Bool
+
+  private var hasGeneratedBloat: Bool {
+    metrics.staleGeneratedImageCount > 0 || metrics.staleShellSnapshotCount > 0
+  }
+
+  var body: some View {
+    InspectorGroup(
+      "Bloat Option",
+      subtitle: "Choose how stale generated artifacts are handled."
+    ) {
+      VStack(alignment: .leading, spacing: AppSpacing.medium) {
+        Toggle(isOn: $deleteGeneratedBloat) {
+          VStack(alignment: .leading, spacing: 4) {
+            Text("Delete old generated bloat")
+              .font(.system(size: 13, weight: .semibold))
+            Text(
+              "Permanently removes stale generated image folders and shell snapshot files instead of archiving them."
+            )
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+          }
+        }
+        .toggleStyle(.checkbox)
+        .disabled(!hasGeneratedBloat)
+        .help(
+          "Only stale generated images and shell snapshots are deleted. Chats, worktrees, logs, databases, config, backups, and project settings are not deleted."
+        )
+
+        Label(
+          "Chats, worktrees, logs, databases, config, backups, and project settings are still kept safe.",
+          systemImage: "checkmark.seal"
+        )
+        .font(.system(size: 12, weight: .medium))
+        .foregroundStyle(.secondary)
+
+        if !hasGeneratedBloat {
+          Label(
+            "No stale generated bloat was found in this scan.",
+            systemImage: "info.circle"
+          )
+          .font(.system(size: 12, weight: .medium))
+          .foregroundStyle(.secondary)
+        }
+      }
+      .panelPadding()
+    }
+  }
+}
+
 struct LargestFilesView: View {
   let files: [FileRecord]
 
@@ -252,7 +305,7 @@ struct CleanupResultView: View {
   var body: some View {
     InspectorGroup(
       "Cleanup Results",
-      subtitle: "Moved \(formatBytes(result.bytesMoved)); backup: \(backupPath)."
+      subtitle: resultSubtitle
     ) {
       VStack(alignment: .leading, spacing: AppSpacing.medium) {
         HStack(spacing: AppSpacing.small) {
@@ -260,6 +313,10 @@ struct CleanupResultView: View {
           ResultPill("\(result.archivedWorktrees)", "Worktrees")
           ResultPill("\(result.archivedGeneratedImages)", "Images")
           ResultPill("\(result.archivedShellSnapshots)", "Snapshots")
+          ResultPill(
+            "\(result.deletedGeneratedImages + result.deletedShellSnapshots)",
+            "Deleted"
+          )
           ResultPill("\(result.rotatedLogs)", "Logs")
           ResultPill("\(result.prunedProjects)", "Projects")
         }
@@ -325,6 +382,13 @@ struct CleanupResultView: View {
 
   private var backupPath: String {
     result.backupDirectory?.path ?? "none"
+  }
+
+  private var resultSubtitle: String {
+    let deleted = result.bytesDeleted > 0
+      ? "; deleted \(formatBytes(result.bytesDeleted))"
+      : ""
+    return "Moved \(formatBytes(result.bytesMoved))\(deleted); backup: \(backupPath)."
   }
 }
 

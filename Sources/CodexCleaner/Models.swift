@@ -33,9 +33,12 @@ struct CleanupResult: Equatable {
   var archivedWorktrees: Int
   var archivedGeneratedImages: Int
   var archivedShellSnapshots: Int
+  var deletedGeneratedImages: Int
+  var deletedShellSnapshots: Int
   var rotatedLogs: Int
   var prunedProjects: Int
   var bytesMoved: Int64
+  var bytesDeleted: Int64
   var verificationNotes: [String]
 }
 

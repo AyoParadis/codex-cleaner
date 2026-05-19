@@ -44,6 +44,8 @@ developers using Codex, SwiftUI, and local AI coding workflows.
 - Moves stale worktrees older than 14 days into `archived_worktrees`.
 - Archives stale generated image runs into `archived_generated_images`.
 - Archives stale shell snapshot scripts into `archived_shell_snapshots`.
+- Offers an explicit opt-in to permanently delete stale generated image runs and
+  shell snapshot scripts instead of archiving them.
 - Rotates oversized `logs_*` SQLite files, including related `-wal` and `-shm`
   files.
 - Prunes trusted project paths from `config.toml` when the folder no longer
@@ -52,8 +54,11 @@ developers using Codex, SwiftUI, and local AI coding workflows.
 
 ## Safety Model
 
-Cleanup moves files into archive folders under `~/.codex`; it does not delete
-sessions, logs, worktrees, generated image runs, or shell snapshots.
+By default, cleanup moves files into archive folders under `~/.codex`; it does
+not delete sessions, logs, worktrees, generated image runs, or shell snapshots.
+If enabled, the delete option only removes stale generated image runs and shell
+snapshot scripts. It does not delete chats, worktrees, logs, databases, config,
+backups, or project settings.
 
 Before each cleanup, the app creates a timestamped backup in:
 
@@ -91,6 +96,12 @@ swift test
 ```
 
 ## Release Notes
+
+### v1.0.8
+
+- Added an explicit opt-in to delete stale generated bloat.
+- Limited deletion to generated image runs and shell snapshot scripts.
+- Added simple UI copy explaining what will be deleted and what stays safe.
 
 ### v1.0.7
 

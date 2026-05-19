@@ -108,9 +108,12 @@ final class CodexCleanerTests: XCTestCase {
     XCTAssertEqual(result.archivedWorktrees, 1)
     XCTAssertEqual(result.archivedGeneratedImages, 1)
     XCTAssertEqual(result.archivedShellSnapshots, 1)
+    XCTAssertEqual(result.deletedGeneratedImages, 0)
+    XCTAssertEqual(result.deletedShellSnapshots, 0)
     XCTAssertEqual(result.rotatedLogs, 3)
     XCTAssertEqual(result.prunedProjects, 1)
     XCTAssertGreaterThan(result.bytesMoved, 0)
+    XCTAssertEqual(result.bytesDeleted, 0)
     XCTAssertNotNil(result.backupDirectory)
 
     XCTAssertFalse(FileManager.default.fileExists(atPath: oldSession.path))
@@ -207,6 +210,66 @@ final class CodexCleanerTests: XCTestCase {
     XCTAssertFalse(
       FileManager.default.fileExists(
         atPath: root.appendingPathComponent("maintenance_backups").path
+      )
+    )
+  }
+
+  func testDeleteGeneratedBloatOnlyDeletesGeneratedArtifacts() throws {
+    let root = try makeTemporaryCodexHome()
+
+    let staleSession = root
+      .appendingPathComponent("sessions/2026/04/01/old.jsonl")
+    try write("old chat", to: staleSession)
+    try setModifiedAt(daysAgo: 20, for: staleSession)
+
+    let staleWorktree = root.appendingPathComponent("worktrees/stale-worktree")
+    try write("diff", to: staleWorktree.appendingPathComponent("note.txt"))
+    try setModifiedAt(daysAgo: 30, for: staleWorktree)
+
+    let generatedImageRun = root
+      .appendingPathComponent("generated_images/019db26a-64fa")
+    try write("image", to: generatedImageRun.appendingPathComponent("image.png"))
+    try setModifiedAt(daysAgo: 30, for: generatedImageRun)
+
+    let shellSnapshot = root
+      .appendingPathComponent("shell_snapshots/019db26a-64fa.1.sh")
+    try write("export PATH=/usr/bin", to: shellSnapshot)
+    try setModifiedAt(daysAgo: 30, for: shellSnapshot)
+
+    let cleaner = CodexCleaner(
+      codexHome: root,
+      staleSessionDays: 10,
+      staleWorktreeDays: 14,
+      staleGeneratedArtifactDays: 14,
+      codexRunningProvider: { false }
+    )
+
+    let result = try cleaner.clean(deleteGeneratedBloat: true)
+
+    XCTAssertEqual(result.archivedSessions, 1)
+    XCTAssertEqual(result.archivedWorktrees, 1)
+    XCTAssertEqual(result.archivedGeneratedImages, 0)
+    XCTAssertEqual(result.archivedShellSnapshots, 0)
+    XCTAssertEqual(result.deletedGeneratedImages, 1)
+    XCTAssertEqual(result.deletedShellSnapshots, 1)
+    XCTAssertGreaterThan(result.bytesMoved, 0)
+    XCTAssertGreaterThan(result.bytesDeleted, 0)
+
+    XCTAssertFalse(FileManager.default.fileExists(atPath: generatedImageRun.path))
+    XCTAssertFalse(FileManager.default.fileExists(atPath: shellSnapshot.path))
+    XCTAssertTrue(
+      FileManager.default.fileExists(
+        atPath: root.appendingPathComponent("archived_sessions/old.jsonl").path
+      )
+    )
+    XCTAssertFalse(
+      FileManager.default.fileExists(
+        atPath: root.appendingPathComponent("archived_generated_images").path
+      )
+    )
+    XCTAssertFalse(
+      FileManager.default.fileExists(
+        atPath: root.appendingPathComponent("archived_shell_snapshots").path
       )
     )
   }

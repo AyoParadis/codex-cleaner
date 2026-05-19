@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.8 - 2026-05-19
+
+- Added an explicit opt-in option to delete stale generated bloat.
+- Limited deletion to stale generated image runs and shell snapshot files.
+- Added clear UI copy explaining what deletion removes and what stays safe.
+- Updated cleanup results to report deleted artifact count and bytes.
+
 ## v1.0.7 - 2026-05-19
 
 - Added Codex artifact cleanup for stale generated image runs.
