@@ -6,9 +6,12 @@ struct CleanerMetrics: Equatable {
   var activeSessionBytes: Int64
   var archivedSessionBytes: Int64
   var logBytes: Int64
+  var generatedArtifactBytes: Int64
   var activeSessionCount: Int
   var staleSessionCount: Int
   var staleWorktreeCount: Int
+  var staleGeneratedImageCount: Int
+  var staleShellSnapshotCount: Int
   var largeLogCount: Int
   var missingProjectCount: Int
   var codexIsRunning: Bool
@@ -28,6 +31,8 @@ struct CleanupResult: Equatable {
   var backupDirectory: URL?
   var archivedSessions: Int
   var archivedWorktrees: Int
+  var archivedGeneratedImages: Int
+  var archivedShellSnapshots: Int
   var rotatedLogs: Int
   var prunedProjects: Int
   var bytesMoved: Int64

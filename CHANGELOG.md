@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.7 - 2026-05-19
+
+- Added Codex artifact cleanup for stale generated image runs.
+- Added cleanup for stale shell snapshot files.
+- Added dashboard metrics and cleanup results for generated artifacts.
+- Updated cleanup tests to verify generated artifacts are archived, not deleted.
+- Updated the app bundle version emitted by the build script.
+
 ## v1.0.6 - 2026-05-14
 
 - Removed placeholder cleanup data before the first real scan completes.

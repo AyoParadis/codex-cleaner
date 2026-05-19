@@ -6,6 +6,7 @@ final class CodexCleaner {
   private let codexHome: URL
   private let staleSessionDays: Int
   private let staleWorktreeDays: Int
+  private let staleGeneratedArtifactDays: Int
   private let largeLogBytes: Int64
   private let codexRunningProvider: () -> Bool
 
@@ -14,12 +15,14 @@ final class CodexCleaner {
       .appendingPathComponent(".codex"),
     staleSessionDays: Int = 10,
     staleWorktreeDays: Int = 14,
+    staleGeneratedArtifactDays: Int = 14,
     largeLogBytes: Int64 = 100 * 1_024 * 1_024,
     codexRunningProvider: @escaping () -> Bool = CodexCleaner.detectCodexRunning
   ) {
     self.codexHome = codexHome
     self.staleSessionDays = staleSessionDays
     self.staleWorktreeDays = staleWorktreeDays
+    self.staleGeneratedArtifactDays = staleGeneratedArtifactDays
     self.largeLogBytes = largeLogBytes
     self.codexRunningProvider = codexRunningProvider
   }
@@ -34,6 +37,14 @@ final class CodexCleaner {
 
   private var worktreesDirectory: URL {
     codexHome.appendingPathComponent("worktrees")
+  }
+
+  private var generatedImagesDirectory: URL {
+    codexHome.appendingPathComponent("generated_images")
+  }
+
+  private var shellSnapshotsDirectory: URL {
+    codexHome.appendingPathComponent("shell_snapshots")
   }
 
   func scan() throws -> CleanerReport {
@@ -57,13 +68,26 @@ final class CodexCleaner {
     let worktrees = directories(
       under: worktreesDirectory
     )
+    let generatedImageRuns = directories(under: generatedImagesDirectory)
+    let shellSnapshots = files(
+      under: shellSnapshotsDirectory,
+      matching: { $0.pathExtension == "sh" }
+    )
     let staleSessions = staleFiles(activeSessions, olderThanDays: staleSessionDays)
     let staleWorktrees = staleDirectories(
       worktrees,
       olderThanDays: staleWorktreeDays
     )
+    let staleGeneratedImages = staleDirectories(
+      generatedImageRuns,
+      olderThanDays: staleGeneratedArtifactDays
+    )
+    let staleShellSnapshots = staleFiles(
+      shellSnapshots,
+      olderThanDays: staleGeneratedArtifactDays
+    )
     let missingProjects = missingConfigProjects()
-    let largest = (activeSessions + archivedSessions + logFiles)
+    let largest = (activeSessions + archivedSessions + logFiles + shellSnapshots)
       .map(record(for:))
       .sorted { $0.bytes > $1.bytes }
       .prefix(12)
@@ -74,9 +98,13 @@ final class CodexCleaner {
       activeSessionBytes: activeSessions.reduce(0) { $0 + fileSize($1) },
       archivedSessionBytes: archivedSessions.reduce(0) { $0 + fileSize($1) },
       logBytes: logFiles.reduce(0) { $0 + fileSize($1) },
+      generatedArtifactBytes: directorySize(generatedImagesDirectory)
+        + directorySize(shellSnapshotsDirectory),
       activeSessionCount: activeSessions.count,
       staleSessionCount: staleSessions.count,
       staleWorktreeCount: staleWorktrees.count,
+      staleGeneratedImageCount: staleGeneratedImages.count,
+      staleShellSnapshotCount: staleShellSnapshots.count,
       largeLogCount: logFiles.filter { fileSize($0) >= largeLogBytes }.count,
       missingProjectCount: missingProjects.count,
       codexIsRunning: codexRunningProvider()
@@ -103,6 +131,8 @@ final class CodexCleaner {
       backupDirectory: backupDirectory,
       archivedSessions: 0,
       archivedWorktrees: 0,
+      archivedGeneratedImages: 0,
+      archivedShellSnapshots: 0,
       rotatedLogs: 0,
       prunedProjects: 0,
       bytesMoved: 0,
@@ -133,6 +163,33 @@ final class CodexCleaner {
       result.archivedWorktrees += 1
     }
 
+    let generatedImageArchive = codexHome
+      .appendingPathComponent("archived_generated_images")
+      .appendingPathComponent(timestamp())
+    for directory in staleDirectories(
+      directories(under: generatedImagesDirectory),
+      olderThanDays: staleGeneratedArtifactDays
+    ) {
+      result.bytesMoved += directorySize(directory)
+      try move(directory, toDirectory: generatedImageArchive)
+      result.archivedGeneratedImages += 1
+    }
+
+    let shellSnapshotArchive = codexHome
+      .appendingPathComponent("archived_shell_snapshots")
+      .appendingPathComponent(timestamp())
+    for file in staleFiles(
+      files(
+        under: shellSnapshotsDirectory,
+        matching: { $0.pathExtension == "sh" }
+      ),
+      olderThanDays: staleGeneratedArtifactDays
+    ) {
+      result.bytesMoved += fileSize(file)
+      try move(file, toDirectory: shellSnapshotArchive)
+      result.archivedShellSnapshots += 1
+    }
+
     let logArchive = codexHome
       .appendingPathComponent("archived_logs")
       .appendingPathComponent(timestamp())
@@ -158,6 +215,8 @@ final class CodexCleaner {
     var plan: [CleanupPlanItem] = []
     let hasCleanupWork = metrics.staleSessionCount > 0
       || metrics.staleWorktreeCount > 0
+      || metrics.staleGeneratedImageCount > 0
+      || metrics.staleShellSnapshotCount > 0
       || metrics.largeLogCount > 0
       || metrics.missingProjectCount > 0
 
@@ -191,6 +250,26 @@ final class CodexCleaner {
       )
     }
 
+    if metrics.staleGeneratedImageCount > 0 {
+      plan.append(
+        CleanupPlanItem(
+          title: "Archive generated image runs",
+          detail: "\(metrics.staleGeneratedImageCount) generated image folders older than \(staleGeneratedArtifactDays) days can move out of the active Codex home.",
+          impact: formatBytes(metrics.generatedArtifactBytes)
+        )
+      )
+    }
+
+    if metrics.staleShellSnapshotCount > 0 {
+      plan.append(
+        CleanupPlanItem(
+          title: "Archive shell snapshots",
+          detail: "\(metrics.staleShellSnapshotCount) shell snapshot files older than \(staleGeneratedArtifactDays) days can move to archived_shell_snapshots.",
+          impact: formatBytes(metrics.generatedArtifactBytes)
+        )
+      )
+    }
+
     if metrics.largeLogCount > 0 {
       plan.append(
         CleanupPlanItem(
@@ -215,7 +294,7 @@ final class CodexCleaner {
       plan.append(
         CleanupPlanItem(
           title: "Nothing to clean",
-          detail: "The scan did not find stale chats, stale worktrees, oversized logs, or missing project entries.",
+          detail: "The scan did not find stale chats, stale worktrees, generated artifacts, oversized logs, or missing project entries.",
           impact: "Clear"
         )
       )

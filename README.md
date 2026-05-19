@@ -4,7 +4,8 @@ Codex Cleaner is an open-source native macOS utility for keeping the Codex
 desktop app fast by safely maintaining local `~/.codex` state.
 
 Codex Cleaner scans first, backs up important state, then archives stale chats,
-worktrees, and oversized logs. It does not delete your Codex sessions.
+worktrees, generated artifacts, shell snapshots, and oversized logs. It does not
+delete your Codex sessions.
 
 ![Codex Cleaner app overview](docs/screenshots/codex-cleaner-app.png)
 
@@ -41,6 +42,8 @@ developers using Codex, SwiftUI, and local AI coding workflows.
 - Backs up important local Codex state before changing anything.
 - Archives active session files older than 10 days.
 - Moves stale worktrees older than 14 days into `archived_worktrees`.
+- Archives stale generated image runs into `archived_generated_images`.
+- Archives stale shell snapshot scripts into `archived_shell_snapshots`.
 - Rotates oversized `logs_*` SQLite files, including related `-wal` and `-shm`
   files.
 - Prunes trusted project paths from `config.toml` when the folder no longer
@@ -50,7 +53,7 @@ developers using Codex, SwiftUI, and local AI coding workflows.
 ## Safety Model
 
 Cleanup moves files into archive folders under `~/.codex`; it does not delete
-sessions, logs, or worktrees.
+sessions, logs, worktrees, generated image runs, or shell snapshots.
 
 Before each cleanup, the app creates a timestamped backup in:
 
@@ -88,6 +91,12 @@ swift test
 ```
 
 ## Release Notes
+
+### v1.0.7
+
+- Added current-Codex artifact cleanup for generated images and shell snapshots.
+- Added artifact metrics and cleanup result counts.
+- Updated the app bundle version to 1.0.7.
 
 ### v1.0.0
 

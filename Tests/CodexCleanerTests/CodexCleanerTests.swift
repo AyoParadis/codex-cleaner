@@ -55,6 +55,16 @@ final class CodexCleanerTests: XCTestCase {
     try write("diff", to: staleWorktree.appendingPathComponent("note.txt"))
     try setModifiedAt(daysAgo: 30, for: staleWorktree)
 
+    let generatedImageRun = root
+      .appendingPathComponent("generated_images/019db26a-64fa")
+    try write("image", to: generatedImageRun.appendingPathComponent("image.png"))
+    try setModifiedAt(daysAgo: 30, for: generatedImageRun)
+
+    let shellSnapshot = root
+      .appendingPathComponent("shell_snapshots/019db26a-64fa.1.sh")
+    try write("export PATH=/usr/bin", to: shellSnapshot)
+    try setModifiedAt(daysAgo: 30, for: shellSnapshot)
+
     let largeLog = root.appendingPathComponent("logs_2.sqlite")
     try write(String(repeating: "x", count: 2_048), to: largeLog)
     let smallLogWal = root.appendingPathComponent("logs_2.sqlite-wal")
@@ -74,6 +84,8 @@ final class CodexCleanerTests: XCTestCase {
     XCTAssertEqual(report.metrics.activeSessionCount, 2)
     XCTAssertEqual(report.metrics.staleSessionCount, 1)
     XCTAssertEqual(report.metrics.staleWorktreeCount, 1)
+    XCTAssertEqual(report.metrics.staleGeneratedImageCount, 1)
+    XCTAssertEqual(report.metrics.staleShellSnapshotCount, 1)
     XCTAssertEqual(report.metrics.largeLogCount, 1)
     XCTAssertEqual(report.metrics.missingProjectCount, 1)
     XCTAssertFalse(report.metrics.codexIsRunning)
@@ -88,10 +100,14 @@ final class CodexCleanerTests: XCTestCase {
     XCTAssertEqual(result.after.metrics.activeSessionCount, 1)
     XCTAssertEqual(result.after.metrics.staleSessionCount, 0)
     XCTAssertEqual(result.after.metrics.staleWorktreeCount, 0)
+    XCTAssertEqual(result.after.metrics.staleGeneratedImageCount, 0)
+    XCTAssertEqual(result.after.metrics.staleShellSnapshotCount, 0)
     XCTAssertEqual(result.after.metrics.largeLogCount, 0)
     XCTAssertEqual(result.after.metrics.missingProjectCount, 0)
     XCTAssertEqual(result.archivedSessions, 1)
     XCTAssertEqual(result.archivedWorktrees, 1)
+    XCTAssertEqual(result.archivedGeneratedImages, 1)
+    XCTAssertEqual(result.archivedShellSnapshots, 1)
     XCTAssertEqual(result.rotatedLogs, 3)
     XCTAssertEqual(result.prunedProjects, 1)
     XCTAssertGreaterThan(result.bytesMoved, 0)
@@ -107,6 +123,8 @@ final class CodexCleanerTests: XCTestCase {
     XCTAssertFalse(FileManager.default.fileExists(atPath: largeLog.path))
     XCTAssertFalse(FileManager.default.fileExists(atPath: smallLogWal.path))
     XCTAssertFalse(FileManager.default.fileExists(atPath: smallLogShm.path))
+    XCTAssertFalse(FileManager.default.fileExists(atPath: generatedImageRun.path))
+    XCTAssertFalse(FileManager.default.fileExists(atPath: shellSnapshot.path))
 
     let archivedWorktrees = try contents(
       of: root.appendingPathComponent("archived_worktrees")
@@ -131,6 +149,28 @@ final class CodexCleanerTests: XCTestCase {
           && FileManager.default.fileExists(
             atPath: $0.appendingPathComponent("logs_2.sqlite-shm").path
           )
+      }
+    )
+
+    let archivedImages = try contents(
+      of: root.appendingPathComponent("archived_generated_images")
+    )
+    XCTAssertTrue(
+      archivedImages.contains {
+        FileManager.default.fileExists(
+          atPath: $0.appendingPathComponent("019db26a-64fa/image.png").path
+        )
+      }
+    )
+
+    let archivedShellSnapshots = try contents(
+      of: root.appendingPathComponent("archived_shell_snapshots")
+    )
+    XCTAssertTrue(
+      archivedShellSnapshots.contains {
+        FileManager.default.fileExists(
+          atPath: $0.appendingPathComponent("019db26a-64fa.1.sh").path
+        )
       }
     )
 
@@ -234,6 +274,8 @@ final class CodexCleanerTests: XCTestCase {
     XCTAssertEqual(titles, ["Nothing to clean"])
     XCTAssertFalse(titles.contains("Archive stale active chats"))
     XCTAssertFalse(titles.contains("Move stale worktrees"))
+    XCTAssertFalse(titles.contains("Archive generated image runs"))
+    XCTAssertFalse(titles.contains("Archive shell snapshots"))
     XCTAssertFalse(titles.contains("Rotate oversized logs"))
     XCTAssertFalse(titles.contains("Prune missing config projects"))
   }

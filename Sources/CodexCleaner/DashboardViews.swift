@@ -13,6 +13,11 @@ struct MetricsStrip: View {
       )
       MetricTile("Logs", value: formatBytes(metrics.logBytes), icon: "doc.text")
       MetricTile(
+        "Artifacts",
+        value: formatBytes(metrics.generatedArtifactBytes),
+        icon: "photo.on.rectangle.angled"
+      )
+      MetricTile(
         metrics.codexIsRunning ? "Blocked" : "Ready",
         value: metrics.codexIsRunning ? "Close Codex" : "Cleanable",
         icon: metrics.codexIsRunning ? "lock" : "checkmark.seal"
@@ -118,7 +123,10 @@ struct LargestFilesView: View {
   let files: [FileRecord]
 
   var body: some View {
-    InspectorGroup("Largest Hot Files", subtitle: "Active chats and logs by size.") {
+    InspectorGroup(
+      "Largest Hot Files",
+      subtitle: "Active chats, shell snapshots, and logs by size."
+    ) {
       if files.isEmpty {
         Text("No active chat or log files were found in this scan.")
           .font(.system(size: 12, weight: .medium))
@@ -184,6 +192,16 @@ struct StatusPanel: View {
           icon: "point.3.connected.trianglepath.dotted"
         )
         StatusLine(
+          "Image runs",
+          value: "\(metrics.staleGeneratedImageCount)",
+          icon: "photo.stack"
+        )
+        StatusLine(
+          "Shell snapshots",
+          value: "\(metrics.staleShellSnapshotCount)",
+          icon: "terminal"
+        )
+        StatusLine(
           "Oversized logs",
           value: "\(metrics.largeLogCount)",
           icon: "doc.badge.gearshape"
@@ -240,6 +258,8 @@ struct CleanupResultView: View {
         HStack(spacing: AppSpacing.small) {
           ResultPill("\(result.archivedSessions)", "Chats")
           ResultPill("\(result.archivedWorktrees)", "Worktrees")
+          ResultPill("\(result.archivedGeneratedImages)", "Images")
+          ResultPill("\(result.archivedShellSnapshots)", "Snapshots")
           ResultPill("\(result.rotatedLogs)", "Logs")
           ResultPill("\(result.prunedProjects)", "Projects")
         }
@@ -264,6 +284,21 @@ struct CleanupResultView: View {
             title: "Stale worktrees",
             before: "\(result.before.metrics.staleWorktreeCount)",
             after: "\(result.after.metrics.staleWorktreeCount)"
+          )
+          ComparisonRow(
+            title: "Generated artifacts",
+            before: formatBytes(result.before.metrics.generatedArtifactBytes),
+            after: formatBytes(result.after.metrics.generatedArtifactBytes)
+          )
+          ComparisonRow(
+            title: "Image runs",
+            before: "\(result.before.metrics.staleGeneratedImageCount)",
+            after: "\(result.after.metrics.staleGeneratedImageCount)"
+          )
+          ComparisonRow(
+            title: "Shell snapshots",
+            before: "\(result.before.metrics.staleShellSnapshotCount)",
+            after: "\(result.after.metrics.staleShellSnapshotCount)"
           )
           ComparisonRow(
             title: "Oversized logs",
