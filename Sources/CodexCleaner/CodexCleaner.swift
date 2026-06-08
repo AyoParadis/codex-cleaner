@@ -348,6 +348,12 @@ final class CodexCleaner {
       "state_5.sqlite",
       "state_5.sqlite-wal",
       "state_5.sqlite-shm",
+      "goals_1.sqlite",
+      "goals_1.sqlite-wal",
+      "goals_1.sqlite-shm",
+      "memories_1.sqlite",
+      "memories_1.sqlite-wal",
+      "memories_1.sqlite-shm",
       ".codex-global-state.json",
       ".codex-global-state.json.bak",
     ]

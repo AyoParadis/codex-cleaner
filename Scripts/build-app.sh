@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="Codex Cleaner"
-APP_VERSION="1.0.8"
-APP_BUILD="8"
+APP_VERSION="1.0.9"
+APP_BUILD="9"
 BUILD_DIR="$ROOT_DIR/.build/app"
 APP_DIR="$BUILD_DIR/$APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"

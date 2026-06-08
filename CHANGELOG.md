@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.9 - 2026-06-08
+
+- Updated pre-cleanup backups for current Codex installs to include
+  `goals_1.sqlite` and `memories_1.sqlite` plus their `-wal` and `-shm` files.
+- Added regression coverage for the expanded backup set.
+
 ## v1.0.8 - 2026-05-19
 
 - Added an explicit opt-in option to delete stale generated bloat.

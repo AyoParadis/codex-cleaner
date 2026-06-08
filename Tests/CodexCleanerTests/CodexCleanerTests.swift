@@ -22,6 +22,12 @@ final class CodexCleanerTests: XCTestCase {
 
     try write("token", to: root.appendingPathComponent("auth.json"))
     try write("{}", to: root.appendingPathComponent("state_5.sqlite"))
+    try write("{}", to: root.appendingPathComponent("goals_1.sqlite"))
+    try write("{}", to: root.appendingPathComponent("goals_1.sqlite-wal"))
+    try write("{}", to: root.appendingPathComponent("goals_1.sqlite-shm"))
+    try write("{}", to: root.appendingPathComponent("memories_1.sqlite"))
+    try write("{}", to: root.appendingPathComponent("memories_1.sqlite-wal"))
+    try write("{}", to: root.appendingPathComponent("memories_1.sqlite-shm"))
     try write(
       """
       model = "gpt-5.5"
@@ -193,6 +199,36 @@ final class CodexCleanerTests: XCTestCase {
     XCTAssertTrue(
       FileManager.default.fileExists(
         atPath: backupDirectory.appendingPathComponent("auth.json").path
+      )
+    )
+    XCTAssertTrue(
+      FileManager.default.fileExists(
+        atPath: backupDirectory.appendingPathComponent("goals_1.sqlite").path
+      )
+    )
+    XCTAssertTrue(
+      FileManager.default.fileExists(
+        atPath: backupDirectory.appendingPathComponent("goals_1.sqlite-wal").path
+      )
+    )
+    XCTAssertTrue(
+      FileManager.default.fileExists(
+        atPath: backupDirectory.appendingPathComponent("goals_1.sqlite-shm").path
+      )
+    )
+    XCTAssertTrue(
+      FileManager.default.fileExists(
+        atPath: backupDirectory.appendingPathComponent("memories_1.sqlite").path
+      )
+    )
+    XCTAssertTrue(
+      FileManager.default.fileExists(
+        atPath: backupDirectory.appendingPathComponent("memories_1.sqlite-wal").path
+      )
+    )
+    XCTAssertTrue(
+      FileManager.default.fileExists(
+        atPath: backupDirectory.appendingPathComponent("memories_1.sqlite-shm").path
       )
     )
   }
