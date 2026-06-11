@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import XCTest
 @testable import CodexCleaner
@@ -246,6 +247,52 @@ final class CodexCleanerTests: XCTestCase {
     XCTAssertFalse(
       FileManager.default.fileExists(
         atPath: root.appendingPathComponent("maintenance_backups").path
+      )
+    )
+  }
+
+  func testCodexRunningDetectionMatchesMainCodexApp() {
+    let bundleURL = URL(fileURLWithPath: "/Applications/Codex.app")
+    let executableURL = bundleURL
+      .appendingPathComponent("Contents/MacOS/Codex")
+
+    XCTAssertTrue(
+      CodexCleaner.isMainCodexApplication(
+        bundleURL: bundleURL,
+        executableURL: executableURL,
+        localizedName: "Codex",
+        bundleIdentifier: "com.openai.codex",
+        activationPolicy: .regular
+      )
+    )
+  }
+
+  func testCodexRunningDetectionIgnoresCodexBundleHelpers() {
+    let bundleURL = URL(fileURLWithPath: "/Applications/Codex.app")
+    let executableURL = bundleURL
+      .appendingPathComponent(
+        "Contents/Frameworks/Codex Framework.framework/Versions/149.0.7827.54/Helpers/browser_crashpad_handler"
+      )
+
+    XCTAssertFalse(
+      CodexCleaner.isMainCodexApplication(
+        bundleURL: bundleURL,
+        executableURL: executableURL,
+        localizedName: "Codex",
+        bundleIdentifier: "com.openai.codex",
+        activationPolicy: .regular
+      )
+    )
+  }
+
+  func testCodexRunningDetectionIgnoresInstalledButNotRunningCodex() {
+    XCTAssertFalse(
+      CodexCleaner.isMainCodexApplication(
+        bundleURL: URL(fileURLWithPath: "/Applications/Codex.app"),
+        executableURL: nil,
+        localizedName: "Codex",
+        bundleIdentifier: "com.openai.codex",
+        activationPolicy: .regular
       )
     )
   }

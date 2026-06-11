@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.10 - 2026-06-11
+
+- Fixed Codex-running detection so lingering helper processes inside
+  `Codex.app` no longer keep cleanup locked after the main Codex app closes.
+- Kept cleanup blocked for the real main Codex app process.
+- Added regression tests for main app, helper process, and installed-but-not-running
+  detection cases.
+- Updated the app bundle version emitted by the build script.
+
 ## v1.0.9 - 2026-06-08
 
 - Updated pre-cleanup backups for current Codex installs to include

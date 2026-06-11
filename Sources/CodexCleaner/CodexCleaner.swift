@@ -601,14 +601,44 @@ final class CodexCleaner {
 
   private static func detectCodexRunning() -> Bool {
     NSWorkspace.shared.runningApplications.contains { app in
-      if app.bundleURL?.lastPathComponent == "Codex.app" {
-        return true
-      }
-      if app.executableURL?.path.contains("/Codex.app/") == true {
-        return true
-      }
-      return app.localizedName == "Codex"
+      isMainCodexApplication(
+        bundleURL: app.bundleURL,
+        executableURL: app.executableURL,
+        localizedName: app.localizedName,
+        bundleIdentifier: app.bundleIdentifier,
+        activationPolicy: app.activationPolicy
+      )
     }
+  }
+
+  static func isMainCodexApplication(
+    bundleURL: URL?,
+    executableURL: URL?,
+    localizedName: String?,
+    bundleIdentifier: String?,
+    activationPolicy: NSApplication.ActivationPolicy
+  ) -> Bool {
+    guard let executableURL else {
+      return false
+    }
+
+    let executablePath = executableURL.standardizedFileURL.path
+    let executableName = executableURL.lastPathComponent
+
+    if let bundleURL {
+      let isCodexBundle = bundleIdentifier == "com.openai.codex"
+        || bundleURL.lastPathComponent == "Codex.app"
+      let mainExecutablePath = bundleURL
+        .appendingPathComponent("Contents/MacOS/Codex")
+        .standardizedFileURL
+        .path
+
+      return isCodexBundle && executablePath == mainExecutablePath
+    }
+
+    return localizedName == "Codex"
+      && executableName == "Codex"
+      && activationPolicy == .regular
   }
 
   private func record(for url: URL) -> FileRecord {
